@@ -23,7 +23,7 @@ func NewVoteRepository(db *gorm.DB) VoteRepository {
 
 func (r *voteRepository) UpsertReviewVote(reviewID uuid.UUID, sessionKey string, voteType model.VoteType) error {
 	var vote model.ReviewVote
-	err := r.db.Where("review_id = ? AND session_key = ?", reviewID, sessionKey).First(&vote).Error
+	err := r.db.Unscoped().Where("review_id = ? AND session_key = ?", reviewID, sessionKey).First(&vote).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return r.db.Create(&model.ReviewVote{
@@ -35,14 +35,18 @@ func (r *voteRepository) UpsertReviewVote(reviewID uuid.UUID, sessionKey string,
 		return err
 	}
 
-	return r.db.Model(&model.ReviewVote{}).
+	if !vote.DeletedAt.Valid && vote.VoteType == voteType {
+		return r.db.Unscoped().Delete(&model.ReviewVote{}, "id = ?", vote.ID).Error
+	}
+
+	return r.db.Unscoped().Model(&model.ReviewVote{}).
 		Where("id = ?", vote.ID).
-		Updates(map[string]interface{}{"vote_type": voteType}).Error
+		Updates(map[string]interface{}{"vote_type": voteType, "deleted_at": nil}).Error
 }
 
 func (r *voteRepository) UpsertCommentVote(commentID uuid.UUID, sessionKey string, voteType model.VoteType) error {
 	var vote model.CommentVote
-	err := r.db.Where("comment_id = ? AND session_key = ?", commentID, sessionKey).First(&vote).Error
+	err := r.db.Unscoped().Where("comment_id = ? AND session_key = ?", commentID, sessionKey).First(&vote).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return r.db.Create(&model.CommentVote{
@@ -54,9 +58,13 @@ func (r *voteRepository) UpsertCommentVote(commentID uuid.UUID, sessionKey strin
 		return err
 	}
 
-	return r.db.Model(&model.CommentVote{}).
+	if !vote.DeletedAt.Valid && vote.VoteType == voteType {
+		return r.db.Unscoped().Delete(&model.CommentVote{}, "id = ?", vote.ID).Error
+	}
+
+	return r.db.Unscoped().Model(&model.CommentVote{}).
 		Where("id = ?", vote.ID).
-		Updates(map[string]interface{}{"vote_type": voteType}).Error
+		Updates(map[string]interface{}{"vote_type": voteType, "deleted_at": nil}).Error
 }
 
 func (r *voteRepository) ReviewExists(reviewID uuid.UUID) (bool, error) {
