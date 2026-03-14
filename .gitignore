@@ -3,10 +3,10 @@
 .dolt/
 *.db
 
-# Ignore markdown docs for code-only pushes
+# Ignore markdown files for code-only pushes
 *.md
 
-# Node / Vite
+# Node / Vite artifacts
 **/node_modules/
 **/dist/
 **/.vite/
@@ -27,3 +27,8 @@ backend/tmp/
 
 # OS noise
 .DS_Store
+
+# Infra local data
+infrastructure/data/
+pgdata/
+esdata/

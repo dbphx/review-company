@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Cơ sở dữ liệu chính lưu thông tin User, Company, Review, Comment
+  postgres:
+    image: postgres:15-alpine
+    container_name: review_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-review_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Chạy script tự động tạo DB lần đầu nếu có
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  # Elasticsearch - Phục vụ tìm kiếm tên công ty siêu tốc
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: review_es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Tắt tính năng bảo mật cho môi trường Dev MVP
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m # Giới hạn RAM cho Elasticsearch
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  # Kibana - (Tùy chọn) Giao diện UI để kiểm tra dữ liệu của Elasticsearch dễ dàng
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: review_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+# Khai báo volume để dữ liệu không bị mất khi stop/xóa container
+volumes:
+  postgres_data:
+  es_data:
