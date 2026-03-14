@@ -24,18 +24,21 @@ export default function Reviews() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
+  const [companyQuery, setCompanyQuery] = useState("")
 
   const adminToken = localStorage.getItem("admin_token")
 
   const loadReviews = async () => {
-    const res = await axios.get(`${API_BASE}/reviews?page=${page}&limit=${limit}`)
+    const query = companyQuery.trim()
+    const companyParam = query ? `&company=${encodeURIComponent(query)}` : ""
+    const res = await axios.get(`${API_BASE}/reviews?page=${page}&limit=${limit}${companyParam}`)
     setReviews(res.data.data || [])
     setTotal(res.data.total || 0)
   }
 
   useEffect(() => {
     loadReviews()
-  }, [page, limit])
+  }, [page, limit, companyQuery])
 
   useEffect(() => {
     if (page > 1 && reviews.length === 0) {
@@ -58,6 +61,18 @@ export default function Reviews() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Quản lý Review</h2>
         <div className="text-sm text-gray-600">Tổng số: <span className="font-semibold">{total}</span></div>
+      </div>
+
+      <div className="bg-white border rounded-2xl shadow-sm p-4">
+        <input
+          value={companyQuery}
+          onChange={(e) => {
+            setCompanyQuery(e.target.value)
+            setPage(1)
+          }}
+          placeholder="Tìm review theo tên công ty"
+          className="w-full border rounded-lg px-3 py-2"
+        />
       </div>
 
       <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">

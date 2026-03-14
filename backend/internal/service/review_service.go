@@ -4,28 +4,32 @@ import (
 	"github.com/google/uuid"
 	"github.com/review/backend/internal/model"
 	"github.com/review/backend/internal/repository"
+	"gorm.io/gorm"
 )
 
 type ReviewService interface {
 	GetCompanyReviews(companyID uuid.UUID, page, limit int) ([]model.Review, int64, error)
 	GetRecentReviews(limit int) ([]model.Review, error)
 	GetDailyReviewCounts(days int) ([]repository.DailyReviewCount, error)
-	GetAllReviews(page, limit int, status string) ([]model.Review, int64, error)
+	GetAllReviews(page, limit int, status, companyQuery string) ([]model.Review, int64, error)
 	GetReviewByID(reviewID uuid.UUID) (*model.Review, error)
 	CreateReview(review *model.Review) error
 	DeleteReview(reviewID uuid.UUID) error
 	GetComments(reviewID uuid.UUID, page, limit int) ([]model.Comment, int64, error)
 	CreateComment(comment *model.Comment) error
 	DeleteComment(commentID uuid.UUID) error
+	VoteReview(reviewID uuid.UUID, voteType model.VoteType, sessionKey string) error
+	VoteComment(commentID uuid.UUID, voteType model.VoteType, sessionKey string) error
 }
 
 type reviewService struct {
 	reviewRepo  repository.ReviewRepository
 	commentRepo repository.CommentRepository
+	voteRepo    repository.VoteRepository
 }
 
-func NewReviewService(rRepo repository.ReviewRepository, cRepo repository.CommentRepository) ReviewService {
-	return &reviewService{reviewRepo: rRepo, commentRepo: cRepo}
+func NewReviewService(rRepo repository.ReviewRepository, cRepo repository.CommentRepository, vRepo repository.VoteRepository) ReviewService {
+	return &reviewService{reviewRepo: rRepo, commentRepo: cRepo, voteRepo: vRepo}
 }
 
 func (s *reviewService) GetCompanyReviews(companyID uuid.UUID, page, limit int) ([]model.Review, int64, error) {
@@ -40,8 +44,8 @@ func (s *reviewService) GetDailyReviewCounts(days int) ([]repository.DailyReview
 	return s.reviewRepo.GetDailyReviewCounts(days)
 }
 
-func (s *reviewService) GetAllReviews(page, limit int, status string) ([]model.Review, int64, error) {
-	return s.reviewRepo.FindAll(page, limit, status)
+func (s *reviewService) GetAllReviews(page, limit int, status, companyQuery string) ([]model.Review, int64, error) {
+	return s.reviewRepo.FindAll(page, limit, status, companyQuery)
 }
 
 func (s *reviewService) GetReviewByID(reviewID uuid.UUID) (*model.Review, error) {
@@ -78,4 +82,26 @@ func (s *reviewService) CreateComment(comment *model.Comment) error {
 
 func (s *reviewService) DeleteComment(commentID uuid.UUID) error {
 	return s.commentRepo.DeleteThread(commentID)
+}
+
+func (s *reviewService) VoteReview(reviewID uuid.UUID, voteType model.VoteType, sessionKey string) error {
+	exists, err := s.voteRepo.ReviewExists(reviewID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return gorm.ErrRecordNotFound
+	}
+	return s.voteRepo.UpsertReviewVote(reviewID, sessionKey, voteType)
+}
+
+func (s *reviewService) VoteComment(commentID uuid.UUID, voteType model.VoteType, sessionKey string) error {
+	exists, err := s.voteRepo.CommentExists(commentID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return gorm.ErrRecordNotFound
+	}
+	return s.voteRepo.UpsertCommentVote(commentID, sessionKey, voteType)
 }

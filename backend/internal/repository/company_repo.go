@@ -18,6 +18,7 @@ type CompanyRepository interface {
 	FindByID(id uuid.UUID) (*model.Company, error)
 	Create(company *model.Company) error
 	Update(company *model.Company) error
+	Delete(id uuid.UUID) error
 	Search(query string) ([]model.Company, error)
 }
 
@@ -61,6 +62,14 @@ func (r *companyRepository) Update(company *model.Company) error {
 		r.indexToES(company)
 	}
 	return err
+}
+
+func (r *companyRepository) Delete(id uuid.UUID) error {
+	if err := r.db.Delete(&model.Company{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	r.deleteFromES(id)
+	return nil
 }
 
 // Search queries Elasticsearch
@@ -142,6 +151,15 @@ func (r *companyRepository) indexToES(company *model.Company) {
 	)
 	if err != nil {
 		log.Printf("Failed to index company %s to ES: %v", company.ID, err)
+		return
+	}
+	defer res.Body.Close()
+}
+
+func (r *companyRepository) deleteFromES(id uuid.UUID) {
+	res, err := r.es.Delete("companies", id.String())
+	if err != nil {
+		log.Printf("Failed to delete company %s from ES: %v", id, err)
 		return
 	}
 	defer res.Body.Close()

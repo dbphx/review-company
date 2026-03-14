@@ -33,6 +33,8 @@ type Review struct {
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
 	CommentCount int            `gorm:"column:comment_count;->;-:migration" json:"comment_count"`
+	LikeCount    int64          `gorm:"column:like_count;->;-:migration" json:"like_count"`
+	DislikeCount int64          `gorm:"column:dislike_count;->;-:migration" json:"dislike_count"`
 
 	// Relationships
 	Company  Company   `gorm:"foreignKey:CompanyID" json:"company,omitempty"`

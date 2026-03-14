@@ -1,15 +1,22 @@
 package service
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"github.com/review/backend/internal/model"
 	"github.com/review/backend/internal/repository"
 )
 
+var ErrCompanyHasReviews = errors.New("cannot delete company with existing reviews")
+
 type CompanyService interface {
 	SearchCompanies(query string) ([]model.Company, error)
 	GetTopCompanies(page, limit int) ([]model.Company, int64, error)
 	GetCompanyByID(id uuid.UUID) (*model.Company, error)
+	CreateCompany(company *model.Company) error
+	UpdateCompany(id uuid.UUID, input *model.Company) (*model.Company, error)
+	DeleteCompany(id uuid.UUID) error
 }
 
 type companyService struct {
@@ -30,4 +37,41 @@ func (s *companyService) GetTopCompanies(page, limit int) ([]model.Company, int6
 
 func (s *companyService) GetCompanyByID(id uuid.UUID) (*model.Company, error) {
 	return s.repo.FindByID(id)
+}
+
+func (s *companyService) CreateCompany(company *model.Company) error {
+	return s.repo.Create(company)
+}
+
+func (s *companyService) UpdateCompany(id uuid.UUID, input *model.Company) (*model.Company, error) {
+	company, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	company.Name = input.Name
+	company.LogoURL = input.LogoURL
+	company.Website = input.Website
+	company.Industry = input.Industry
+	company.Size = input.Size
+	company.Description = input.Description
+
+	if err := s.repo.Update(company); err != nil {
+		return nil, err
+	}
+
+	return company, nil
+}
+
+func (s *companyService) DeleteCompany(id uuid.UUID) error {
+	company, err := s.repo.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	if company.TotalReviews > 0 {
+		return ErrCompanyHasReviews
+	}
+
+	return s.repo.Delete(id)
 }

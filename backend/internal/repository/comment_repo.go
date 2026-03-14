@@ -29,7 +29,12 @@ func (r *commentRepository) FindByReviewID(reviewID uuid.UUID, page, limit int) 
 
 	query := r.db.Model(&model.Comment{}).Where("review_id = ? AND status = ?", reviewID, model.CommentStatusApproved)
 	query.Count(&total)
-	err := query.Offset(offset).Limit(limit).Order("created_at asc").Find(&comments).Error
+	err := query.
+		Select("comments.*, (SELECT COUNT(1) FROM comment_votes cv WHERE cv.comment_id = comments.id AND cv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM comment_votes cv WHERE cv.comment_id = comments.id AND cv.vote_type = ?) AS dislike_count", model.VoteLike, model.VoteDislike).
+		Offset(offset).
+		Limit(limit).
+		Order("created_at asc").
+		Find(&comments).Error
 
 	return comments, total, err
 }

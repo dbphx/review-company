@@ -17,16 +17,24 @@ Monorepo cho nền tảng review công ty gồm portal người dùng, admin por
 - Search công ty với autocomplete và empty-state an toàn.
 - Company detail + review list + review form.
 - Comment/reply thread cho user thường, lưu bền vững sau refresh.
+- Like/Dislike cho review và comment (mỗi session một lựa chọn, có thể đổi lựa chọn).
 - Hiển thị số bình luận ngay cả khi thread đang collapse (`Bình luận (x)`).
 - Chỉ hiển thị 3 comment đầu khi mở thread, có nút `Xem thêm bình luận`.
 - Admin login bằng email/mật khẩu (`/api/admin/login`) + JWT.
 - RBAC: chỉ admin được gọi API xóa review/comment.
+- Admin quản lý danh sách công ty (thêm/sửa/xóa, chặn xóa khi công ty đã có review).
+- Admin quản lý review có filter tìm theo tên công ty.
 - Xóa comment theo cascade toàn thread con.
 - Xóa review kèm xử lý comments liên quan và cập nhật lại thống kê công ty.
 - Dashboard admin lấy số liệu thật:
   - `/api/companies/stats/summary`
   - `/api/reviews/stats/daily?days=7`
 - Route error boundary cho cả user portal và admin portal.
+- Scraper CLI hỗ trợ nhiều mode:
+  - `--mode=companies`
+  - `--mode=reviews-1900`
+  - `--mode=reviews-1900-full`
+  - `--mode=all`
 
 ## Chạy nhanh local
 1. Hạ tầng:
@@ -38,7 +46,8 @@ Monorepo cho nền tảng review công ty gồm portal người dùng, admin por
    - `go run cmd/api/main.go`
 3. Seed dữ liệu mẫu:
    - `cd backend`
-   - `go run cmd/scraper/main.go`
+   - `go run cmd/scraper/main.go --mode=companies`
+   - hoặc `go run cmd/scraper/main.go --mode=all`
 4. Frontend user:
    - `cd frontend && npm install && npm run dev`
 5. Frontend admin:

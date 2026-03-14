@@ -26,6 +26,8 @@ type Comment struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	LikeCount       int64          `gorm:"column:like_count;->;-:migration" json:"like_count"`
+	DislikeCount    int64          `gorm:"column:dislike_count;->;-:migration" json:"dislike_count"`
 
 	// Relationships
 	Review        Review    `gorm:"foreignKey:ReviewID" json:"-"`

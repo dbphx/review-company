@@ -32,6 +32,8 @@ func ConnectPostgres(cfg *config.Config) {
 		&model.Company{},
 		&model.Review{},
 		&model.Comment{},
+		&model.ReviewVote{},
+		&model.CommentVote{},
 		&model.User{},
 		&model.AdminUser{},
 	)

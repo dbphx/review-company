@@ -27,6 +27,8 @@ interface Review {
   salary_gross: number
   interview_exp: string
   comment_count?: number
+  like_count?: number
+  dislike_count?: number
   created_at: string
 }
 
@@ -36,7 +38,12 @@ interface CommentItem {
   content: string
   created_at: string
   parent_comment_id?: string | null
+  like_count?: number
+  dislike_count?: number
 }
+
+const fallbackLogo = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Company")}&background=0F766E&color=FFFFFF&bold=true`
 
 export default function CompanyDetail() {
   const { id } = useParams()
@@ -49,6 +56,15 @@ export default function CompanyDetail() {
   const [replyingTo, setReplyingTo] = useState<Record<string, string | null>>({})
   const [replyContentByReview, setReplyContentByReview] = useState<Record<string, string>>({})
   const [showReviewForm, setShowReviewForm] = useState(false)
+  const [sessionId] = useState(() => {
+    const key = "review_session_id"
+    let value = localStorage.getItem(key)
+    if (!value) {
+      value = crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+      localStorage.setItem(key, value)
+    }
+    return value
+  })
 
   const { register, handleSubmit, reset } = useForm()
 
@@ -110,6 +126,34 @@ export default function CompanyDetail() {
     await loadComments(reviewId)
   }
 
+  const voteReview = async (reviewId: string, vote: "like" | "dislike") => {
+    const res = await api.post(
+      `/reviews/${reviewId}/vote`,
+      { vote },
+      { headers: { "X-Session-ID": sessionId } }
+    )
+    const like = Number(res.data?.like_count || 0)
+    const dislike = Number(res.data?.dislike_count || 0)
+    setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, like_count: like, dislike_count: dislike } : r)))
+  }
+
+  const voteComment = async (commentId: string, vote: "like" | "dislike") => {
+    const res = await api.post(
+      `/comments/${commentId}/vote`,
+      { vote },
+      { headers: { "X-Session-ID": sessionId } }
+    )
+    const like = Number(res.data?.like_count || 0)
+    const dislike = Number(res.data?.dislike_count || 0)
+    setCommentsByReview((prev) => {
+      const next: Record<string, CommentItem[]> = {}
+      Object.keys(prev).forEach((reviewId) => {
+        next[reviewId] = prev[reviewId].map((c) => (c.id === commentId ? { ...c, like_count: like, dislike_count: dislike } : c))
+      })
+      return next
+    })
+  }
+
   const onSubmitReview = async (data: any) => {
     try {
       await api.post(`/companies/${id}/reviews`, {
@@ -132,7 +176,15 @@ export default function CompanyDetail() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header Info */}
       <div className="bg-white rounded-2xl shadow-sm border p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative">
-        <img src={company.logo_url} alt={company.name} className="w-32 h-32 object-contain bg-white rounded-xl border p-2 shadow-sm" />
+        <img
+          src={company.logo_url || fallbackLogo(company.name)}
+          alt={company.name}
+          onError={(e) => {
+            e.currentTarget.onerror = null
+            e.currentTarget.src = fallbackLogo(company.name)
+          }}
+          className="w-32 h-32 object-contain bg-white rounded-xl border p-2 shadow-sm"
+        />
         <div className="flex-1 text-center sm:text-left">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{company.name}</h1>
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-sm text-gray-600 mb-4">
@@ -279,6 +331,8 @@ export default function CompanyDetail() {
 
               <div className="pt-4 border-t flex items-center gap-6 text-sm text-gray-500">
                 <button onClick={() => toggleComments(review.id)} className="flex items-center gap-1 hover:text-blue-600 transition"><MessageSquare className="w-4 h-4"/> Bình luận ({openComments[review.id] ? comments.length : (review.comment_count || 0)})</button>
+                <button onClick={() => voteReview(review.id, "like")} className="flex items-center gap-1 hover:text-green-600 transition"><ThumbsUp className="w-4 h-4"/> {review.like_count || 0}</button>
+                <button onClick={() => voteReview(review.id, "dislike")} className="flex items-center gap-1 hover:text-red-600 transition"><ThumbsDown className="w-4 h-4"/> {review.dislike_count || 0}</button>
                 {review.salary_gross && <span>Lương: <b>{review.salary_gross.toLocaleString()}đ</b></span>}
               </div>
 
@@ -305,6 +359,12 @@ export default function CompanyDetail() {
                         >
                           Reply
                         </button>
+                        <button className="text-xs text-green-600 hover:underline mt-1 ml-3" onClick={() => voteComment(c.id, "like")}>
+                          Hữu ích ({c.like_count || 0})
+                        </button>
+                        <button className="text-xs text-red-600 hover:underline mt-1 ml-3" onClick={() => voteComment(c.id, "dislike")}>
+                          Không hữu ích ({c.dislike_count || 0})
+                        </button>
 
                         {replyingTo[review.id] === c.id && (
                           <div className="flex gap-2 mt-2">
@@ -324,6 +384,10 @@ export default function CompanyDetail() {
                               <div key={r.id} className="bg-slate-50 border rounded-lg p-2">
                                 <div className="text-xs text-gray-500">{r.author_name} · {new Date(r.created_at).toLocaleString()}</div>
                                 <p className="text-sm text-gray-700 mt-1">{r.content}</p>
+                                <div className="mt-1 flex items-center gap-3 text-xs">
+                                  <button className="text-green-600 hover:underline" onClick={() => voteComment(r.id, "like")}>Hữu ích ({r.like_count || 0})</button>
+                                  <button className="text-red-600 hover:underline" onClick={() => voteComment(r.id, "dislike")}>Không hữu ích ({r.dislike_count || 0})</button>
+                                </div>
                               </div>
                             ))}
                           </div>

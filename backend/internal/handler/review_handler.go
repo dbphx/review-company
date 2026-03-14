@@ -3,9 +3,15 @@ package handler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/review/backend/internal/db"
 	"github.com/review/backend/internal/model"
 	"github.com/review/backend/internal/service"
+	"gorm.io/gorm"
 )
+
+type voteRequest struct {
+	Vote string `json:"vote"`
+}
 
 type ReviewHandler struct {
 	reviewService service.ReviewService
@@ -60,8 +66,9 @@ func (h *ReviewHandler) GetAllReviews(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
 	status := c.Query("status", "")
+	companyQuery := c.Query("company", "")
 
-	reviews, total, err := h.reviewService.GetAllReviews(page, limit, status)
+	reviews, total, err := h.reviewService.GetAllReviews(page, limit, status, companyQuery)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -183,4 +190,92 @@ func (h *ReviewHandler) DeleteComment(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"message": "comment deleted"})
+}
+
+func (h *ReviewHandler) VoteReview(c *fiber.Ctx) error {
+	reviewIDParam := c.Params("reviewId")
+	reviewID, err := uuid.Parse(reviewIDParam)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid review id"})
+	}
+
+	var req voteRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	voteType, ok := model.ParseVoteType(req.Vote)
+	if !ok {
+		return c.Status(400).JSON(fiber.Map{"error": "vote must be like or dislike"})
+	}
+
+	sessionKey := c.Get("X-Session-ID")
+	if sessionKey == "" {
+		sessionKey = c.IP()
+	}
+
+	err = h.reviewService.VoteReview(reviewID, voteType, sessionKey)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "review not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	review, err := h.reviewService.GetReviewByID(reviewID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"review_id":       reviewID,
+		"like_count":      review.LikeCount,
+		"dislike_count":   review.DislikeCount,
+		"selected_action": voteType,
+	})
+}
+
+func (h *ReviewHandler) VoteComment(c *fiber.Ctx) error {
+	commentIDParam := c.Params("commentId")
+	commentID, err := uuid.Parse(commentIDParam)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid comment id"})
+	}
+
+	var req voteRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	voteType, ok := model.ParseVoteType(req.Vote)
+	if !ok {
+		return c.Status(400).JSON(fiber.Map{"error": "vote must be like or dislike"})
+	}
+
+	sessionKey := c.Get("X-Session-ID")
+	if sessionKey == "" {
+		sessionKey = c.IP()
+	}
+
+	err = h.reviewService.VoteComment(commentID, voteType, sessionKey)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "comment not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var comment model.Comment
+	if err := db.DB.
+		Select("comments.*, (SELECT COUNT(1) FROM comment_votes cv WHERE cv.comment_id = comments.id AND cv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM comment_votes cv WHERE cv.comment_id = comments.id AND cv.vote_type = ?) AS dislike_count", model.VoteLike, model.VoteDislike).
+		First(&comment, "id = ?", commentID).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"comment_id":      commentID,
+		"like_count":      comment.LikeCount,
+		"dislike_count":   comment.DislikeCount,
+		"selected_action": voteType,
+	})
 }

@@ -25,6 +25,9 @@ interface ReviewItem {
   }
 }
 
+const fallbackLogo = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Company")}&background=0F766E&color=FFFFFF&bold=true`
+
 export default function Home() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Company[]>([])
@@ -103,7 +106,14 @@ export default function Home() {
                     onClick={() => navigate(`/company/${c.id}`)}
                   >
                     <div className="flex items-center space-x-3">
-                      <img src={c.logo_url} className="w-10 h-10 object-contain bg-white rounded border" />
+                      <img
+                        src={c.logo_url || fallbackLogo(c.name)}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = fallbackLogo(c.name)
+                        }}
+                        className="w-10 h-10 object-contain bg-white rounded border"
+                      />
                       <div>
                         <span className="block truncate font-medium text-gray-900">{c.name}</span>
                         <span className="block truncate text-gray-500 text-xs">{c.industry}</span>
@@ -125,7 +135,15 @@ export default function Home() {
             <Link key={c.id} to={`/company/${c.id}`} className="block">
               <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border">
                 <div className="flex items-center space-x-4">
-                  <img src={c.logo_url} alt={c.name} className="w-16 h-16 object-contain rounded border p-1" />
+                  <img
+                    src={c.logo_url || fallbackLogo(c.name)}
+                    alt={c.name}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null
+                      e.currentTarget.src = fallbackLogo(c.name)
+                    }}
+                    className="w-16 h-16 object-contain rounded border p-1"
+                  />
                   <div>
                     <h3 className="font-bold text-lg text-gray-900 line-clamp-1">{c.name}</h3>
                     <p className="text-sm text-gray-500">{c.industry}</p>

@@ -19,7 +19,7 @@ type ReviewRepository interface {
 	FindRecent(limit int, status string) ([]model.Review, error)
 	Create(review *model.Review) error
 	UpdateStatus(id uuid.UUID, status model.ReviewStatus) error
-	FindAll(page, limit int, status string) ([]model.Review, int64, error)
+	FindAll(page, limit int, status, companyQuery string) ([]model.Review, int64, error)
 	RecalculateCompanyStats(companyID uuid.UUID) error
 	GetDailyReviewCounts(days int) ([]DailyReviewCount, error)
 }
@@ -44,7 +44,7 @@ func (r *reviewRepository) FindByCompanyID(companyID uuid.UUID, page, limit int,
 
 	query.Count(&total)
 	err := query.
-		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count", model.CommentStatusApproved).
+		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS dislike_count", model.CommentStatusApproved, model.VoteLike, model.VoteDislike).
 		Preload("Company").
 		Offset(offset).
 		Limit(limit).
@@ -55,7 +55,10 @@ func (r *reviewRepository) FindByCompanyID(companyID uuid.UUID, page, limit int,
 
 func (r *reviewRepository) FindByID(id uuid.UUID) (*model.Review, error) {
 	var review model.Review
-	err := r.db.Preload("Company").First(&review, "id = ?", id).Error
+	err := r.db.
+		Select("reviews.*, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS dislike_count", model.VoteLike, model.VoteDislike).
+		Preload("Company").
+		First(&review, "id = ?", id).Error
 	return &review, err
 }
 
@@ -66,7 +69,7 @@ func (r *reviewRepository) FindRecent(limit int, status string) ([]model.Review,
 		query = query.Where("status = ?", status)
 	}
 	err := query.
-		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count", model.CommentStatusApproved).
+		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS dislike_count", model.CommentStatusApproved, model.VoteLike, model.VoteDislike).
 		Order("created_at desc").
 		Limit(limit).
 		Find(&reviews).Error
@@ -105,21 +108,26 @@ func (r *reviewRepository) UpdateStatus(id uuid.UUID, status model.ReviewStatus)
 	return r.db.Model(&model.Review{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (r *reviewRepository) FindAll(page, limit int, status string) ([]model.Review, int64, error) {
+func (r *reviewRepository) FindAll(page, limit int, status, companyQuery string) ([]model.Review, int64, error) {
 	var reviews []model.Review
 	var total int64
 	offset := (page - 1) * limit
 
-	query := r.db.Model(&model.Review{}).Preload("Company")
+	query := r.db.Model(&model.Review{}).
+		Joins("LEFT JOIN companies ON companies.id = reviews.company_id").
+		Preload("Company")
 	if status != "" {
 		query = query.Where("status = ?", status)
 	} else {
 		query = query.Where("status <> ?", model.StatusDeleted)
 	}
+	if companyQuery != "" {
+		query = query.Where("LOWER(companies.name) LIKE LOWER(?)", "%"+companyQuery+"%")
+	}
 
 	query.Count(&total)
 	err := query.
-		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count", model.CommentStatusApproved).
+		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS dislike_count", model.CommentStatusApproved, model.VoteLike, model.VoteDislike).
 		Preload("Company").
 		Offset(offset).
 		Limit(limit).

@@ -24,9 +24,10 @@ func main() {
 	companyRepo := repository.NewCompanyRepository(db.DB, db.ES)
 	reviewRepo := repository.NewReviewRepository(db.DB)
 	commentRepo := repository.NewCommentRepository(db.DB)
+	voteRepo := repository.NewVoteRepository(db.DB)
 
 	companySvc := service.NewCompanyService(companyRepo)
-	reviewSvc := service.NewReviewService(reviewRepo, commentRepo)
+	reviewSvc := service.NewReviewService(reviewRepo, commentRepo, voteRepo)
 
 	companyHandler := handler.NewCompanyHandler(companySvc)
 	reviewHandler := handler.NewReviewHandler(reviewSvc)
@@ -51,12 +52,16 @@ func main() {
 	api.Get("/companies/top", companyHandler.GetTopCompanies)
 	api.Get("/companies/:id", companyHandler.GetCompanyByID)
 	api.Get("/companies/stats/summary", companyHandler.GetCompanyStats)
+	api.Post("/companies", adminMiddleware.RequireAdmin(), companyHandler.CreateCompany)
+	api.Put("/companies/:id", adminMiddleware.RequireAdmin(), companyHandler.UpdateCompany)
+	api.Delete("/companies/:id", adminMiddleware.RequireAdmin(), companyHandler.DeleteCompany)
 
 	// Reviews
 	api.Get("/reviews/recent", reviewHandler.GetRecentReviews)
 	api.Get("/reviews/stats/daily", reviewHandler.GetDailyReviewCounts)
 	api.Get("/reviews", reviewHandler.GetAllReviews)
 	api.Get("/reviews/:reviewId", reviewHandler.GetReviewByID)
+	api.Post("/reviews/:reviewId/vote", reviewHandler.VoteReview)
 	api.Delete("/reviews/:reviewId", adminMiddleware.RequireAdmin(), reviewHandler.DeleteReview)
 	api.Get("/companies/:id/reviews", reviewHandler.GetCompanyReviews)
 	api.Post("/companies/:id/reviews", reviewHandler.CreateReview)
@@ -64,6 +69,7 @@ func main() {
 	// Comments
 	api.Get("/reviews/:reviewId/comments", reviewHandler.GetComments)
 	api.Post("/reviews/:reviewId/comments", reviewHandler.CreateComment)
+	api.Post("/comments/:commentId/vote", reviewHandler.VoteComment)
 	api.Delete("/comments/:commentId", adminMiddleware.RequireAdmin(), reviewHandler.DeleteComment)
 
 	log.Printf("Server is starting on port %s", cfg.Port)

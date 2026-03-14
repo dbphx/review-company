@@ -1,29 +1,40 @@
 # Scraper/Seeder Requirements - Golang CLI
 
-Hiện tại command trong `cmd/scraper` đang đóng vai trò **seeder dữ liệu mẫu** cho môi trường dev (thay vì scraper production hoàn chỉnh).
+Command `cmd/scraper` hiện là CLI seed dữ liệu cho môi trường dev, hỗ trợ nhiều mode.
 
 ## 1. Trạng thái hiện tại
-- Tạo dữ liệu mẫu công ty vào PostgreSQL.
-- Đồng bộ index công ty sang Elasticsearch thông qua repository.
+- Kết nối PostgreSQL + Elasticsearch.
+- Seed/crawl dữ liệu công ty.
+- Seed review mẫu tham khảo từ 1900.com.vn.
+- Tự tạo công ty nếu thiếu khi seed review.
+- Dedupe review theo `company_id + title + author_name` để tránh insert trùng.
 - Seed tài khoản admin mặc định:
   - email: `admin@review.com`
   - password: `admin123`
-- Chạy thủ công bằng CLI cho môi trường local/dev.
 
-## 2. Dữ liệu được seed
-- Danh sách công ty mẫu: FPT Software, VNG, Shopee, Tiki, Momo.
-- Thuộc tính: tên, logo, website, industry, size, description.
+## 2. Các mode hỗ trợ
+- `companies`:
+  - Crawl danh sách công ty từ Wikipedia (List of companies of Vietnam).
+  - Nếu crawl lỗi/không có data thì fallback sang danh sách seed cục bộ.
+  - Update các trường còn thiếu ở công ty đã có (logo/industry/description).
 
-## 3. Quy trình chạy seed
-1. Load cấu hình `.env`.
-2. Kết nối PostgreSQL + Elasticsearch.
-3. Insert/upsert dữ liệu công ty mẫu.
-4. Index dữ liệu công ty vào Elasticsearch.
-5. Seed admin user mặc định nếu chưa tồn tại.
+- `reviews-1900`:
+  - Seed một batch review mẫu từ dữ liệu tham khảo 1900.com.vn.
+  - Nếu công ty chưa có thì tự tạo mới trước khi insert review.
 
-## 4. Cách chạy
-- `go run cmd/scraper/main.go`
+- `all`:
+  - Chạy tuần tự `companies` rồi `reviews-1900`.
 
-## 5. Lưu ý tương lai
-- Có thể mở rộng lại thành scraper production (colly/goquery) và tách command `scraper` + `seeder` riêng.
-- Có thể đưa vào cron để cập nhật công ty định kỳ.
+## 3. Cách chạy
+- Chỉ seed công ty:
+  - `go run cmd/scraper/main.go --mode=companies`
+- Chỉ seed review 1900:
+  - `go run cmd/scraper/main.go --mode=reviews-1900`
+- Chạy toàn bộ:
+  - `go run cmd/scraper/main.go --mode=all`
+
+Mặc định nếu không truyền `--mode` thì chạy `companies`.
+
+## 4. Ghi chú
+- Dữ liệu review ở mode `reviews-1900` là dữ liệu seed dev tham khảo công khai.
+- Có thể mở rộng thêm mode scrape production đầy đủ trong tương lai (phân trang, rate-limit, audit nguồn, retry).
