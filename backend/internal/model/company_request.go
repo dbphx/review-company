@@ -19,7 +19,10 @@ type CompanyRequest struct {
 	ID          uuid.UUID            `gorm:"type:uuid;primaryKey" json:"id"`
 	Name        string               `gorm:"type:varchar(255);not null;index" json:"name"`
 	LogoURL     string               `gorm:"type:varchar(500)" json:"logo_url"`
+	Website     string               `gorm:"type:varchar(500)" json:"website"`
+	Industry    string               `gorm:"type:varchar(255)" json:"industry"`
 	Size        string               `gorm:"type:varchar(100)" json:"size"`
+	Description string               `gorm:"type:text" json:"description"`
 	Status      CompanyRequestStatus `gorm:"type:varchar(20);not null;default:'PENDING';index" json:"status"`
 	RequestedIP string               `gorm:"type:varchar(45)" json:"-"`
 	CreatedAt   time.Time            `json:"created_at"`

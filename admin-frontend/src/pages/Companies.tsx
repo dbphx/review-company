@@ -27,7 +27,10 @@ interface CompanyRequestItem {
   id: string
   name: string
   logo_url: string
+  website: string
+  industry: string
   size: string
+  description: string
   status: "PENDING" | "APPROVED" | "REJECTED"
   created_at: string
 }
@@ -81,6 +84,10 @@ export default function Companies() {
   const [confirmDeleteCompany, setConfirmDeleteCompany] = useState<CompanyItem | null>(null)
   const [companyRequests, setCompanyRequests] = useState<CompanyRequestItem[]>([])
   const [requestsLoading, setRequestsLoading] = useState(false)
+  const [approvingRequest, setApprovingRequest] = useState<CompanyRequestItem | null>(null)
+  const [approvePayload, setApprovePayload] = useState<CompanyPayload>(emptyPayload)
+  const [approveError, setApproveError] = useState("")
+  const [approving, setApproving] = useState(false)
   const { pushToast } = useToast()
 
   const adminToken = localStorage.getItem("admin_token")
@@ -203,17 +210,77 @@ export default function Companies() {
     }
   }
 
-  const resolveCompanyRequest = async (request: CompanyRequestItem, status: "APPROVED" | "REJECTED") => {
+  const resolveCompanyRequest = async (request: CompanyRequestItem, status: "APPROVED" | "REJECTED", customPayload?: CompanyPayload) => {
     try {
+      const body: any = { status }
+      if (status === "APPROVED" && customPayload) {
+        body.name = customPayload.name
+        body.logo_url = customPayload.logo_url
+        body.website = customPayload.website
+        body.industry = customPayload.industry
+        body.size = customPayload.size
+        body.description = customPayload.description
+      }
+
       await axios.patch(
         `${API_BASE}/admin/company-requests/${request.id}`,
-        { status },
+        body,
         { headers: { Authorization: `Bearer ${adminToken}` } }
       )
       pushToast(status === "APPROVED" ? `Đã duyệt ${request.name}` : `Đã từ chối ${request.name}`, "success")
       await Promise.all([loadCompanyRequests(), loadCompanies()])
     } catch (err: any) {
       pushToast(err?.response?.data?.error || "Xử lý yêu cầu thất bại", "error")
+    }
+  }
+
+  const openApproveRequestModal = (request: CompanyRequestItem) => {
+    setApprovingRequest(request)
+    setApproveError("")
+    setApprovePayload({
+      name: request.name || "",
+      logo_url: request.logo_url || "",
+      website: request.website || "",
+      industry: request.industry || "",
+      size: request.size || "",
+      description: request.description || "",
+    })
+  }
+
+  const closeApproveRequestModal = () => {
+    if (approving) return
+    setApprovingRequest(null)
+    setApprovePayload(emptyPayload)
+    setApproveError("")
+  }
+
+  const confirmApproveRequest = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!approvingRequest) return
+    if (!approvePayload.name.trim()) {
+      setApproveError("Tên công ty là bắt buộc")
+      return
+    }
+
+    setApproving(true)
+    setApproveError("")
+    try {
+      await resolveCompanyRequest(approvingRequest, "APPROVED", {
+        ...approvePayload,
+        name: approvePayload.name.trim(),
+        logo_url: approvePayload.logo_url.trim(),
+        website: approvePayload.website.trim(),
+        industry: approvePayload.industry.trim(),
+        size: approvePayload.size.trim(),
+        description: approvePayload.description.trim(),
+      })
+      setApprovingRequest(null)
+      setApprovePayload(emptyPayload)
+      setApproveError("")
+    } catch (err: any) {
+      setApproveError(err?.response?.data?.error || "Xử lý yêu cầu thất bại")
+    } finally {
+      setApproving(false)
     }
   }
 
@@ -272,7 +339,7 @@ export default function Companies() {
                 <div className="flex items-center gap-2">
                   <button
                     className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    onClick={() => resolveCompanyRequest(req, "APPROVED")}
+                    onClick={() => openApproveRequestModal(req)}
                   >
                     Duyệt
                   </button>
@@ -422,6 +489,42 @@ export default function Companies() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {approvingRequest && (
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+          <form onSubmit={confirmApproveRequest} className="w-full max-w-2xl bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Duyệt yêu cầu và tạo công ty</h3>
+            <p className="text-sm text-slate-600">Nhập đầy đủ thông tin công ty như form thêm công ty ở Admin, sau đó xác nhận tạo.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input value={approvePayload.name} onChange={(e) => setApprovePayload((p) => ({ ...p, name: e.target.value }))} placeholder="Tên công ty *" className="border rounded-lg px-3 py-2" required />
+              <input value={approvePayload.industry} onChange={(e) => setApprovePayload((p) => ({ ...p, industry: e.target.value }))} placeholder="Ngành" className="border rounded-lg px-3 py-2" />
+              <input value={approvePayload.website} onChange={(e) => setApprovePayload((p) => ({ ...p, website: e.target.value }))} placeholder="Website" className="border rounded-lg px-3 py-2" />
+              <input value={approvePayload.logo_url} onChange={(e) => setApprovePayload((p) => ({ ...p, logo_url: e.target.value }))} placeholder="Đường dẫn logo" className="border rounded-lg px-3 py-2" />
+              <input value={approvePayload.size} onChange={(e) => setApprovePayload((p) => ({ ...p, size: e.target.value }))} placeholder="Quy mô" className="border rounded-lg px-3 py-2 sm:col-span-2" />
+            </div>
+
+            <textarea
+              value={approvePayload.description}
+              onChange={(e) => setApprovePayload((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Mô tả"
+              rows={4}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+
+            {approveError ? <p className="text-sm text-red-600">{approveError}</p> : null}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={closeApproveRequestModal} className="px-4 py-2 rounded-lg border" disabled={approving}>
+                Hủy
+              </button>
+              <button type="submit" disabled={approving} className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60">
+                {approving ? "Đang tạo..." : "Xác nhận tạo công ty"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

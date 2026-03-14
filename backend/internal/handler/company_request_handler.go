@@ -11,13 +11,22 @@ import (
 )
 
 type createCompanyRequestInput struct {
-	Name    string `json:"name"`
-	LogoURL string `json:"logo_url"`
-	Size    string `json:"size"`
+	Name        string `json:"name"`
+	LogoURL     string `json:"logo_url"`
+	Website     string `json:"website"`
+	Industry    string `json:"industry"`
+	Size        string `json:"size"`
+	Description string `json:"description"`
 }
 
 type updateCompanyRequestStatusInput struct {
-	Status string `json:"status"`
+	Status      string `json:"status"`
+	Name        string `json:"name"`
+	LogoURL     string `json:"logo_url"`
+	Website     string `json:"website"`
+	Industry    string `json:"industry"`
+	Size        string `json:"size"`
+	Description string `json:"description"`
 }
 
 type CompanyRequestHandler struct {
@@ -42,7 +51,10 @@ func (h *CompanyRequestHandler) Create(c *fiber.Ctx) error {
 	req := &model.CompanyRequest{
 		Name:        name,
 		LogoURL:     strings.TrimSpace(input.LogoURL),
+		Website:     strings.TrimSpace(input.Website),
+		Industry:    strings.TrimSpace(input.Industry),
 		Size:        strings.TrimSpace(input.Size),
+		Description: strings.TrimSpace(input.Description),
 		RequestedIP: c.IP(),
 		Status:      model.CompanyRequestPending,
 	}
@@ -95,10 +107,36 @@ func (h *CompanyRequestHandler) UpdateStatus(c *fiber.Ctx) error {
 	}
 
 	if status == string(model.CompanyRequestApproved) {
+		name := strings.TrimSpace(input.Name)
+		if name == "" {
+			name = strings.TrimSpace(req.Name)
+		}
+		if name == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "tên công ty là bắt buộc"})
+		}
+
 		company := &model.Company{
-			Name:    strings.TrimSpace(req.Name),
-			LogoURL: strings.TrimSpace(req.LogoURL),
-			Size:    strings.TrimSpace(req.Size),
+			Name:        name,
+			LogoURL:     strings.TrimSpace(input.LogoURL),
+			Website:     strings.TrimSpace(input.Website),
+			Industry:    strings.TrimSpace(input.Industry),
+			Size:        strings.TrimSpace(input.Size),
+			Description: strings.TrimSpace(input.Description),
+		}
+		if company.LogoURL == "" {
+			company.LogoURL = strings.TrimSpace(req.LogoURL)
+		}
+		if company.Website == "" {
+			company.Website = strings.TrimSpace(req.Website)
+		}
+		if company.Industry == "" {
+			company.Industry = strings.TrimSpace(req.Industry)
+		}
+		if company.Size == "" {
+			company.Size = strings.TrimSpace(req.Size)
+		}
+		if company.Description == "" {
+			company.Description = strings.TrimSpace(req.Description)
 		}
 		if err := h.companyService.CreateCompany(company); err != nil {
 			if err == service.ErrDuplicateCompany {
