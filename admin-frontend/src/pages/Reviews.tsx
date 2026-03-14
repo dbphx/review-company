@@ -127,8 +127,8 @@ export default function Reviews() {
         </div>
       </div>
 
-      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border rounded-2xl shadow-sm overflow-x-auto">
+        <table className="w-full text-sm table-fixed">
           <thead className="bg-slate-50 border-b text-left text-slate-600">
             <tr>
               <th className="px-4 py-3">Review</th>
@@ -141,14 +141,14 @@ export default function Reviews() {
           <tbody>
             {reviews.map((r) => (
               <tr key={r.id} className="border-b last:border-b-0">
-                <td className="px-4 py-3">
-                  <div className="font-medium text-slate-900">{r.title}</div>
-                  <div className="text-slate-500 line-clamp-1">{r.content}</div>
+                <td className="px-4 py-3 align-top w-[40%]">
+                  <div className="font-medium text-slate-900 break-words [overflow-wrap:anywhere]">{r.title}</div>
+                  <div className="text-slate-500 line-clamp-2 break-words [overflow-wrap:anywhere]">{r.content}</div>
                 </td>
-                <td className="px-4 py-3">{r.company?.name || "Không có"}</td>
-                <td className="px-4 py-3">{r.rating}</td>
-                <td className="px-4 py-3">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 align-top w-[18%] break-words [overflow-wrap:anywhere]">{r.company?.name || "Không có"}</td>
+                <td className="px-4 py-3 align-top w-[8%]">{r.rating}</td>
+                <td className="px-4 py-3 align-top w-[16%] whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                <td className="px-4 py-3 align-top w-[18%]">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
