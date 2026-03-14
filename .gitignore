@@ -2,3 +2,28 @@
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Ignore markdown docs for code-only pushes
+*.md
+
+# Node / Vite
+**/node_modules/
+**/dist/
+**/.vite/
+*.log
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Go build artifacts
+backend/api
+backend/bin/
+backend/tmp/
+*.exe
+*.test
+*.out
+
+# OS noise
+.DS_Store
