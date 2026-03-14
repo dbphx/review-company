@@ -28,6 +28,27 @@ interface ReviewItem {
 const fallbackLogo = (name: string) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Company")}&background=0F766E&color=FFFFFF&bold=true`
 
+const normalizeCompanyName = (name: string) =>
+  (name || "").toLowerCase().trim()
+
+const resolveLogoUrl = (name: string, logoUrl: string) => {
+  const normalized = normalizeCompanyName(name)
+  const isFptSoftware =
+    normalized.includes("fpt software") ||
+    normalized.includes("fsoft") ||
+    (normalized.includes("fpt") && normalized.includes("software"))
+
+  if (isFptSoftware) {
+    return "https://upload.wikimedia.org/wikipedia/commons/1/11/FPT_logo_2010.svg"
+  }
+
+  if (normalized.includes("tma solutions")) {
+    return "https://www.tma.vn/logo-menu.webp"
+  }
+
+  return logoUrl || fallbackLogo(name)
+}
+
 export default function Home() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Company[]>([])
@@ -38,7 +59,7 @@ export default function Home() {
 
   useEffect(() => {
     // Fetch top companies on load
-    api.get("/companies/top?limit=6").then((res) => {
+    api.get("/companies/top?limit=6&order=desc").then((res) => {
       setTopCompanies(res.data?.data || [])
     }).catch(() => {
       setTopCompanies([])
@@ -107,7 +128,7 @@ export default function Home() {
                   >
                     <div className="flex items-center space-x-3">
                       <img
-                        src={c.logo_url || fallbackLogo(c.name)}
+                        src={resolveLogoUrl(c.name, c.logo_url)}
                         onError={(e) => {
                           e.currentTarget.onerror = null
                           e.currentTarget.src = fallbackLogo(c.name)
@@ -136,7 +157,7 @@ export default function Home() {
               <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border">
                 <div className="flex items-center space-x-4">
                   <img
-                    src={c.logo_url || fallbackLogo(c.name)}
+                    src={resolveLogoUrl(c.name, c.logo_url)}
                     alt={c.name}
                     onError={(e) => {
                       e.currentTarget.onerror = null

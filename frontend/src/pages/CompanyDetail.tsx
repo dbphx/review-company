@@ -46,10 +46,35 @@ interface CommentItem {
 const fallbackLogo = (name: string) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Company")}&background=0F766E&color=FFFFFF&bold=true`
 
+const REVIEWS_PER_PAGE = 20
+
+const normalizeCompanyName = (name: string) =>
+  (name || "").toLowerCase().trim()
+
+const resolveLogoUrl = (name: string, logoUrl: string) => {
+  const normalized = normalizeCompanyName(name)
+  const isFptSoftware =
+    normalized.includes("fpt software") ||
+    normalized.includes("fsoft") ||
+    (normalized.includes("fpt") && normalized.includes("software"))
+
+  if (isFptSoftware) {
+    return "https://upload.wikimedia.org/wikipedia/commons/1/11/FPT_logo_2010.svg"
+  }
+
+  if (normalized.includes("tma solutions")) {
+    return "https://www.tma.vn/logo-menu.webp"
+  }
+
+  return logoUrl || fallbackLogo(name)
+}
+
 export default function CompanyDetail() {
   const { id } = useParams()
   const [company, setCompany] = useState<Company | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
+  const [reviewsTotal, setReviewsTotal] = useState(0)
+  const [reviewPage, setReviewPage] = useState(1)
   const [commentsByReview, setCommentsByReview] = useState<Record<string, CommentItem[]>>({})
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({})
   const [visibleCommentCount, setVisibleCommentCount] = useState<Record<string, number>>({})
@@ -71,20 +96,26 @@ export default function CompanyDetail() {
   const { register, handleSubmit, reset } = useForm()
 
   useEffect(() => {
-    fetchData()
+    setReviewPage(1)
   }, [id])
+
+  useEffect(() => {
+    fetchData()
+  }, [id, reviewPage])
 
   const fetchData = async () => {
     try {
       const [cRes, rRes] = await Promise.all([
         api.get(`/companies/${id}`),
-        api.get(`/companies/${id}/reviews`)
+        api.get(`/companies/${id}/reviews?page=${reviewPage}&limit=${REVIEWS_PER_PAGE}`)
       ])
       setCompany(cRes.data)
       setReviews(rRes.data?.data || [])
+      setReviewsTotal(Number(rRes.data?.total || 0))
     } catch {
       setCompany(null)
       setReviews([])
+      setReviewsTotal(0)
     }
   }
 
@@ -188,12 +219,14 @@ export default function CompanyDetail() {
 
   if (!company) return <div className="p-12 text-center text-gray-500">Loading...</div>
 
+  const totalReviewPages = Math.max(1, Math.ceil(reviewsTotal / REVIEWS_PER_PAGE))
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header Info */}
       <div className="bg-white rounded-2xl shadow-sm border p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative">
         <img
-          src={company.logo_url || fallbackLogo(company.name)}
+          src={resolveLogoUrl(company.name, company.logo_url)}
           alt={company.name}
           onError={(e) => {
             e.currentTarget.onerror = null
@@ -290,7 +323,7 @@ export default function CompanyDetail() {
 
       {/* Reviews List */}
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900 border-b pb-4">Tất cả bài Review ({company.total_reviews})</h2>
+        <h2 className="text-2xl font-bold text-gray-900 border-b pb-4">Tất cả bài Review ({reviewsTotal || company.total_reviews})</h2>
         {reviews.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Chưa có đánh giá nào cho công ty này. Hãy là người đầu tiên!</p>
         ) : (
@@ -425,6 +458,26 @@ export default function CompanyDetail() {
             </div>
             )
           })
+        )}
+
+        {reviewsTotal > REVIEWS_PER_PAGE && (
+          <div className="flex items-center justify-between pt-2">
+            <button
+              className="px-3 py-2 border rounded-lg disabled:opacity-50"
+              onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+              disabled={reviewPage <= 1}
+            >
+              Trang trước
+            </button>
+            <span className="text-sm text-gray-600">Trang {reviewPage} / {totalReviewPages}</span>
+            <button
+              className="px-3 py-2 border rounded-lg disabled:opacity-50"
+              onClick={() => setReviewPage((p) => Math.min(totalReviewPages, p + 1))}
+              disabled={reviewPage >= totalReviewPages}
+            >
+              Trang sau
+            </button>
+          </div>
         )}
       </div>
     </div>

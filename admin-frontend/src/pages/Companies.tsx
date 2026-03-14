@@ -37,6 +37,27 @@ const emptyPayload: CompanyPayload = {
 const fallbackLogo = (name: string) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Company")}&background=0F766E&color=FFFFFF&bold=true`
 
+const normalizeCompanyName = (name: string) =>
+  (name || "").toLowerCase().trim()
+
+const resolveLogoUrl = (name: string, logoUrl: string) => {
+  const normalized = normalizeCompanyName(name)
+  const isFptSoftware =
+    normalized.includes("fpt software") ||
+    normalized.includes("fsoft") ||
+    (normalized.includes("fpt") && normalized.includes("software"))
+
+  if (isFptSoftware) {
+    return "https://upload.wikimedia.org/wikipedia/commons/1/11/FPT_logo_2010.svg"
+  }
+
+  if (normalized.includes("tma solutions")) {
+    return "https://www.tma.vn/logo-menu.webp"
+  }
+
+  return logoUrl || fallbackLogo(name)
+}
+
 export default function Companies() {
   const [companies, setCompanies] = useState<CompanyItem[]>([])
   const [total, setTotal] = useState(0)
@@ -192,7 +213,7 @@ export default function Companies() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <img
-                      src={c.logo_url || fallbackLogo(c.name)}
+                      src={resolveLogoUrl(c.name, c.logo_url)}
                       onError={(e) => {
                         e.currentTarget.onerror = null
                         e.currentTarget.src = fallbackLogo(c.name)
