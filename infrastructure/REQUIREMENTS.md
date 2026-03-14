@@ -7,7 +7,7 @@ Dự án sử dụng **Docker Compose** để quản lý các thành phần cơ 
 `docker-compose up -d`
 
 ## 2. Các Dịch Vụ (Services) Cần Thiết
-Bao gồm 3 thành phần đang dùng ở local:
+Bao gồm 4 thành phần đang dùng ở local:
 
 ### 2.1. PostgreSQL (Cơ Sở Dữ Liệu Chính)
 - **Version:** 15-alpine (hoặc mới nhất).
@@ -26,6 +26,10 @@ Bao gồm 3 thành phần đang dùng ở local:
 ### 2.3. (Tùy Chọn) Kibana
 - Kibana đang được bật trong docker-compose để kiểm tra index/search dữ liệu nhanh.
 
+### 2.4. Redis
+- Dùng lưu phiên đăng nhập admin/mod (TTL 1h) và kiểm tra session hợp lệ ở middleware.
+- Port local: `6379`.
+
 ## 3. Kiến Trúc Triển Khai (Deployment Architecture - Tương Lai)
 Khi Deploy lên server thật (VPS như DigitalOcean, AWS EC2):
 - **Frontend (Vite):** Build ra static files (HTML, CSS, JS) và phục vụ qua Nginx hoặc Vercel/Netlify.
@@ -43,11 +47,15 @@ Ví dụ:
 - `GOOGLE_OAUTH_CLIENT_ID=...`
 - `GOOGLE_OAUTH_SECRET=...`
 - `ADMIN_JWT_SECRET=...`
+- `REDIS_ADDR=localhost:6379`
+- `REDIS_PASSWORD=`
+- `REDIS_DB=0`
 
 ## 5. Ports local
 - PostgreSQL: `5432`
 - Elasticsearch: `9200`
 - Kibana: `5601`
+- Redis: `6379`
 - Backend API: `3000`
 - Portal frontend: `5173`
 - Admin frontend: `5174`

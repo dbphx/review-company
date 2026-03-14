@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom"
 import { Star, MessageSquare, ThumbsUp, ThumbsDown, Briefcase } from "lucide-react"
 import { useForm } from "react-hook-form"
 import api from "../api"
+import { useToast } from "../components/ui/ToastProvider"
 
 interface Company {
   id: string
@@ -56,6 +57,7 @@ export default function CompanyDetail() {
   const [replyingTo, setReplyingTo] = useState<Record<string, string | null>>({})
   const [replyContentByReview, setReplyContentByReview] = useState<Record<string, string>>({})
   const [showReviewForm, setShowReviewForm] = useState(false)
+  const { pushToast } = useToast()
   const [sessionId] = useState(() => {
     const key = "review_session_id"
     let value = localStorage.getItem(key)
@@ -110,11 +112,16 @@ export default function CompanyDetail() {
       : (newCommentByReview[reviewId] || "").trim()
     if (!content) return
 
-    await api.post(`/reviews/${reviewId}/comments`, {
-      author_name: "Ẩn danh",
-      content,
-      parent_comment_id: parentId || null,
-    })
+    try {
+      await api.post(`/reviews/${reviewId}/comments`, {
+        author_name: "Ẩn danh",
+        content,
+        parent_comment_id: parentId || null,
+      })
+    } catch {
+      pushToast("Gửi bình luận thất bại", "error")
+      return
+    }
 
     if (parentId) {
       setReplyingTo((prev) => ({ ...prev, [reviewId]: null }))
@@ -124,34 +131,43 @@ export default function CompanyDetail() {
     }
 
     await loadComments(reviewId)
+    pushToast("Gửi bình luận thành công", "success")
   }
 
   const voteReview = async (reviewId: string, vote: "like" | "dislike") => {
-    const res = await api.post(
-      `/reviews/${reviewId}/vote`,
-      { vote },
-      { headers: { "X-Session-ID": sessionId } }
-    )
-    const like = Number(res.data?.like_count || 0)
-    const dislike = Number(res.data?.dislike_count || 0)
-    setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, like_count: like, dislike_count: dislike } : r)))
+    try {
+      const res = await api.post(
+        `/reviews/${reviewId}/vote`,
+        { vote },
+        { headers: { "X-Session-ID": sessionId } }
+      )
+      const like = Number(res.data?.like_count || 0)
+      const dislike = Number(res.data?.dislike_count || 0)
+      setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, like_count: like, dislike_count: dislike } : r)))
+    } catch {
+      pushToast("Gửi bình chọn review thất bại", "error")
+    }
   }
 
   const voteComment = async (commentId: string, vote: "like" | "dislike") => {
-    const res = await api.post(
-      `/comments/${commentId}/vote`,
-      { vote },
-      { headers: { "X-Session-ID": sessionId } }
-    )
-    const like = Number(res.data?.like_count || 0)
-    const dislike = Number(res.data?.dislike_count || 0)
-    setCommentsByReview((prev) => {
-      const next: Record<string, CommentItem[]> = {}
-      Object.keys(prev).forEach((reviewId) => {
-        next[reviewId] = prev[reviewId].map((c) => (c.id === commentId ? { ...c, like_count: like, dislike_count: dislike } : c))
+    try {
+      const res = await api.post(
+        `/comments/${commentId}/vote`,
+        { vote },
+        { headers: { "X-Session-ID": sessionId } }
+      )
+      const like = Number(res.data?.like_count || 0)
+      const dislike = Number(res.data?.dislike_count || 0)
+      setCommentsByReview((prev) => {
+        const next: Record<string, CommentItem[]> = {}
+        Object.keys(prev).forEach((reviewId) => {
+          next[reviewId] = prev[reviewId].map((c) => (c.id === commentId ? { ...c, like_count: like, dislike_count: dislike } : c))
+        })
+        return next
       })
-      return next
-    })
+    } catch {
+      pushToast("Gửi bình chọn bình luận thất bại", "error")
+    }
   }
 
   const onSubmitReview = async (data: any) => {
@@ -161,12 +177,12 @@ export default function CompanyDetail() {
         rating: Number(data.rating),
         salary_gross: data.salary_gross ? Number(data.salary_gross) : null
       })
-      alert("Review submitted successfully!")
+      pushToast("Gửi review thành công", "success")
       setShowReviewForm(false)
       reset()
       fetchData()
-    } catch (e) {
-      alert("Failed to submit review")
+    } catch {
+      pushToast("Gửi review thất bại", "error")
     }
   }
 

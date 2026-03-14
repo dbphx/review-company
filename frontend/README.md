@@ -13,6 +13,12 @@ Mặc định chạy tại `http://localhost:5173`.
 - Company detail: xem review, viết review, bình luận/reply theo thread.
 - Profile: đăng nhập Google (portal user) và thông tin tài khoản.
 
+## Cập nhật mới
+- Brand hiển thị: `ReviewCT`.
+- Thông báo thao tác dùng toast góc phải (thành công/thất bại), không dùng alert.
+- Tracking lượt truy cập gửi về backend (`/api/analytics/visits`).
+- Dữ liệu hiển thị review phụ thuộc mode hệ thống (`v1|v2|all`) do admin chọn.
+
 ## UX quan trọng đã triển khai
 - Search có loading/empty-state, không đẩy user vào route error khi không có kết quả.
 - Route-level error boundary để hiển thị lỗi thân thiện.

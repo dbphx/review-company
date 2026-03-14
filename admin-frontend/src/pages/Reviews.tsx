@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { Link } from "react-router-dom"
+import { useToast } from "../components/ui/ToastProvider"
 
 interface CompanyInfo {
   id: string
@@ -25,20 +26,26 @@ export default function Reviews() {
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
   const [companyQuery, setCompanyQuery] = useState("")
+  const [createdDate, setCreatedDate] = useState("")
+  const [seedVersion, setSeedVersion] = useState("")
+  const [confirmDeleteReviewId, setConfirmDeleteReviewId] = useState<string | null>(null)
+  const { pushToast } = useToast()
 
   const adminToken = localStorage.getItem("admin_token")
 
   const loadReviews = async () => {
     const query = companyQuery.trim()
     const companyParam = query ? `&company=${encodeURIComponent(query)}` : ""
-    const res = await axios.get(`${API_BASE}/reviews?page=${page}&limit=${limit}${companyParam}`)
+    const createdDateParam = createdDate ? `&created_date=${encodeURIComponent(createdDate)}` : ""
+    const seedVersionParam = seedVersion && seedVersion !== "all" ? `&seed_version=${encodeURIComponent(seedVersion)}` : ""
+    const res = await axios.get(`${API_BASE}/reviews?page=${page}&limit=${limit}${companyParam}${createdDateParam}${seedVersionParam}`)
     setReviews(res.data.data || [])
     setTotal(res.data.total || 0)
   }
 
   useEffect(() => {
     loadReviews()
-  }, [page, limit, companyQuery])
+  }, [page, limit, companyQuery, createdDate, seedVersion])
 
   useEffect(() => {
     if (page > 1 && reviews.length === 0) {
@@ -49,11 +56,17 @@ export default function Reviews() {
   const totalPages = Math.max(1, Math.ceil(total / limit))
 
   const deleteReview = async (reviewId: string) => {
-    if (!window.confirm("Bạn chắc chắn muốn xóa review này?")) return
-    await axios.delete(`${API_BASE}/reviews/${reviewId}`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-    })
-    await loadReviews()
+    try {
+      await axios.delete(`${API_BASE}/reviews/${reviewId}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      await loadReviews()
+      pushToast("Đã xóa review", "success")
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || "Xóa review thất bại", "error")
+    } finally {
+      setConfirmDeleteReviewId(null)
+    }
   }
 
   return (
@@ -63,7 +76,7 @@ export default function Reviews() {
         <div className="text-sm text-gray-600">Tổng số: <span className="font-semibold">{total}</span></div>
       </div>
 
-      <div className="bg-white border rounded-2xl shadow-sm p-4">
+      <div className="bg-white border rounded-2xl shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input
           value={companyQuery}
           onChange={(e) => {
@@ -73,6 +86,45 @@ export default function Reviews() {
           placeholder="Tìm review theo tên công ty"
           className="w-full border rounded-lg px-3 py-2"
         />
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={createdDate}
+            onChange={(e) => {
+              setCreatedDate(e.target.value)
+              setPage(1)
+            }}
+            className="w-full border rounded-lg px-3 py-2"
+          />
+          {createdDate && (
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedDate("")
+                setPage(1)
+              }}
+              className="px-3 py-2 border rounded-lg text-sm"
+            >
+              Xóa
+            </button>
+          )}
+        </div>
+        <select
+          value={seedVersion}
+          onChange={(e) => {
+            setSeedVersion(e.target.value)
+            setPage(1)
+          }}
+          className="w-full border rounded-lg px-3 py-2"
+        >
+          <option value="">Theo mode hệ thống</option>
+          <option value="v2">Dữ liệu mới (v2)</option>
+          <option value="v1">Dữ liệu khởi tạo (v1)</option>
+          <option value="all">Tất cả dữ liệu</option>
+        </select>
+        <div className="sm:col-span-2 text-xs text-gray-500">
+          Chọn đúng ngày để lọc review theo ngày tạo, kết hợp thêm version dữ liệu V1/live.
+        </div>
       </div>
 
       <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
@@ -93,17 +145,32 @@ export default function Reviews() {
                   <div className="font-medium text-slate-900">{r.title}</div>
                   <div className="text-slate-500 line-clamp-1">{r.content}</div>
                 </td>
-                <td className="px-4 py-3">{r.company?.name || "N/A"}</td>
+                <td className="px-4 py-3">{r.company?.name || "Không có"}</td>
                 <td className="px-4 py-3">{r.rating}</td>
                 <td className="px-4 py-3">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="px-4 py-3 space-x-3">
-                  <Link className="text-indigo-600 hover:underline" to={`/reviews/${r.id}`}>Quản lý</Link>
-                  <a className="text-blue-600 hover:underline" href={`http://localhost:5173/company/${r.company?.id}`} target="_blank" rel="noreferrer">
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
+                      to={`/reviews/${r.id}`}
+                    >
+                      Quản lý
+                    </Link>
+                    <a
+                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                      href={`http://localhost:5173/company/${r.company?.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                     Portal
-                  </a>
-                  <button className="text-red-600 hover:underline" onClick={() => deleteReview(r.id)}>
-                    Xóa
-                  </button>
+                    </a>
+                    <button
+                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition"
+                      onClick={() => setConfirmDeleteReviewId(r.id)}
+                    >
+                      Xóa
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -133,6 +200,27 @@ export default function Reviews() {
           Trang sau
         </button>
       </div>
+
+      {confirmDeleteReviewId && (
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa review</h3>
+            <p className="text-sm text-slate-600">Bạn có chắc muốn xóa review này?</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setConfirmDeleteReviewId(null)} className="px-4 py-2 rounded-lg border">
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteReview(confirmDeleteReviewId)}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

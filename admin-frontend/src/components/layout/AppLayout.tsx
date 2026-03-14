@@ -1,18 +1,61 @@
 import { Outlet, Link, useNavigate } from "react-router-dom"
-import { Building2, MessageSquare, LayoutDashboard, Settings, LogOut } from "lucide-react"
+import { Building2, MessageSquare, LayoutDashboard, Settings, LogOut, Users, Activity } from "lucide-react"
+import { useEffect, useState } from "react"
+import axios from "axios"
+import { useToast } from "../ui/ToastProvider"
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
 
 export default function AppLayout() {
   const navigate = useNavigate()
+  const token = localStorage.getItem("admin_token")
+  const [dataMode, setDataMode] = useState("v1")
+  const { pushToast } = useToast()
   const adminName = (() => {
     try {
       const raw = localStorage.getItem("admin_user")
-      if (!raw) return "Admin User"
+      if (!raw) return "Quản trị viên"
       const parsed = JSON.parse(raw)
-      return parsed?.name || parsed?.email || "Admin User"
+      return parsed?.name || parsed?.email || "Quản trị viên"
     } catch {
-      return "Admin User"
+      return "Quản trị viên"
     }
   })()
+  const adminRole = (() => {
+    try {
+      const raw = localStorage.getItem("admin_user")
+      if (!raw) return "ADMIN"
+      const parsed = JSON.parse(raw)
+      return parsed?.role || "ADMIN"
+    } catch {
+      return "ADMIN"
+    }
+  })()
+
+  useEffect(() => {
+    if (!token) return
+    axios.get(`${API_BASE}/admin/data-mode`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => setDataMode(res.data?.mode || "v1"))
+      .catch(() => {})
+  }, [token])
+
+  const onChangeDataMode = async (mode: string) => {
+    const prev = dataMode
+    setDataMode(mode)
+    if (adminRole !== "ADMIN") {
+      setDataMode(prev)
+      pushToast("Chỉ ADMIN mới được đổi mode dữ liệu", "error")
+      return
+    }
+    try {
+      const res = await axios.post(`${API_BASE}/admin/data-mode`, { mode }, { headers: { Authorization: `Bearer ${token}` } })
+      setDataMode(res.data?.mode || mode)
+      pushToast("Đã cập nhật mode dữ liệu", "success")
+    } catch (err: any) {
+      setDataMode(prev)
+      pushToast(err?.response?.data?.error || "Không thể cập nhật mode dữ liệu", "error")
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("admin_token")
@@ -27,7 +70,7 @@ export default function AppLayout() {
         <div className="p-6">
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
             <Settings className="w-5 h-5 text-blue-400" />
-            Admin Panel
+            Bảng quản trị
           </h1>
         </div>
         
@@ -41,6 +84,12 @@ export default function AppLayout() {
           <Link to="/companies" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium text-slate-300 hover:text-white">
             <Building2 className="w-4 h-4" /> Quản lý Công ty
           </Link>
+          <Link to="/admin-users" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium text-slate-300 hover:text-white">
+            <Users className="w-4 h-4" /> Quản lý Admin
+          </Link>
+          <Link to="/active-sessions" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 transition text-sm font-medium text-slate-300 hover:text-white">
+            <Activity className="w-4 h-4" /> Phiên hoạt động
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-800">
@@ -53,8 +102,21 @@ export default function AppLayout() {
       {/* Main Content */}
       <main className="flex-1 overflow-x-hidden">
         <header className="h-16 bg-white border-b px-8 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="font-semibold text-gray-800">Review Công Ty - Quản Trị Hệ Thống</h2>
+          <h2 className="font-semibold text-gray-800">ReviewCT - Quản trị hệ thống</h2>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Mode dữ liệu</span>
+              <select
+                value={dataMode}
+                onChange={(e) => onChangeDataMode(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-sm"
+                disabled={adminRole !== "ADMIN"}
+              >
+                <option value="v1">V1</option>
+                <option value="v2">V2</option>
+                <option value="all">ALL</option>
+              </select>
+            </div>
             <span className="text-sm font-medium">{adminName}</span>
             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">{adminName.charAt(0).toUpperCase()}</div>
           </div>

@@ -8,6 +8,7 @@ import Home from './pages/Home.tsx'
 import CompanyDetail from './pages/CompanyDetail.tsx'
 import Profile from './pages/Profile.tsx'
 import RouteError from './pages/RouteError.tsx'
+import { ToastProvider } from './components/ui/ToastProvider.tsx'
 
 const router = createBrowserRouter([
   {
@@ -33,8 +34,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || "MOCK_CLIENT_ID"}>
-      <RouterProvider router={router} />
-    </GoogleOAuthProvider>
+    <ToastProvider>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || "MOCK_CLIENT_ID"}>
+        <RouterProvider router={router} />
+      </GoogleOAuthProvider>
+    </ToastProvider>
   </StrictMode>,
 )

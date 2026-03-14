@@ -1,6 +1,9 @@
-# Review Company - Monorepo Overview
+# ReviewCT (review-company) - Monorepo Overview
 
 Monorepo cho nền tảng review công ty gồm portal người dùng, admin portal riêng domain/port, backend API và hạ tầng local.
+
+- Thư mục project hiện tại: `.../src/github.com/review-company`
+- Go module backend: `github.com/review-company/backend`
 
 ## Mục tiêu hiện tại
 - Người dùng tìm kiếm công ty nhanh (Elasticsearch), đọc/viết review ẩn danh, bình luận và reply theo thread.
@@ -21,14 +24,19 @@ Monorepo cho nền tảng review công ty gồm portal người dùng, admin por
 - Hiển thị số bình luận ngay cả khi thread đang collapse (`Bình luận (x)`).
 - Chỉ hiển thị 3 comment đầu khi mở thread, có nút `Xem thêm bình luận`.
 - Admin login bằng email/mật khẩu (`/api/admin/login`) + JWT.
-- RBAC: chỉ admin được gọi API xóa review/comment.
+- RBAC theo role `ADMIN`/`MOD`.
 - Admin quản lý danh sách công ty (thêm/sửa/xóa, chặn xóa khi công ty đã có review).
 - Admin quản lý review có filter tìm theo tên công ty.
+- Quản lý tài khoản admin/mod (ADMIN mới được tạo/xóa user quản trị).
+- Quản lý phiên đăng nhập Redis (TTL 1h), ADMIN có thể thu hồi phiên của MOD.
 - Xóa comment theo cascade toàn thread con.
 - Xóa review kèm xử lý comments liên quan và cập nhật lại thống kê công ty.
 - Dashboard admin lấy số liệu thật:
   - `/api/companies/stats/summary`
   - `/api/reviews/stats/daily?days=7`
+- Dashboard có top công ty điểm cao/thấp theo mode dữ liệu, top 10/20/50, chart gradient.
+- Tracking lượt truy cập unique theo IP/1h (theo ngày/tháng).
+- Chế độ dữ liệu toàn hệ thống `v1 | v2 | all` cho cả admin và portal.
 - Route error boundary cho cả user portal và admin portal.
 - Scraper CLI hỗ trợ nhiều mode:
   - `--mode=companies`

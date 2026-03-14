@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/review/backend/internal/model"
+	"github.com/review-company/backend/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -14,14 +14,15 @@ type DailyReviewCount struct {
 }
 
 type ReviewRepository interface {
-	FindByCompanyID(companyID uuid.UUID, page, limit int, status string) ([]model.Review, int64, error)
+	FindByCompanyID(companyID uuid.UUID, page, limit int, status, seedVersion string) ([]model.Review, int64, error)
 	FindByID(id uuid.UUID) (*model.Review, error)
-	FindRecent(limit int, status string) ([]model.Review, error)
+	FindRecent(limit int, status, seedVersion string) ([]model.Review, error)
 	Create(review *model.Review) error
 	UpdateStatus(id uuid.UUID, status model.ReviewStatus) error
-	FindAll(page, limit int, status, companyQuery string) ([]model.Review, int64, error)
+	FindAll(page, limit int, status, companyQuery, seedVersion, createdDate string) ([]model.Review, int64, error)
+	MarkAllAsSeedVersion(seedVersion string) error
 	RecalculateCompanyStats(companyID uuid.UUID) error
-	GetDailyReviewCounts(days int) ([]DailyReviewCount, error)
+	GetDailyReviewCounts(days int, seedVersion string) ([]DailyReviewCount, error)
 }
 
 type reviewRepository struct {
@@ -32,7 +33,7 @@ func NewReviewRepository(db *gorm.DB) ReviewRepository {
 	return &reviewRepository{db: db}
 }
 
-func (r *reviewRepository) FindByCompanyID(companyID uuid.UUID, page, limit int, status string) ([]model.Review, int64, error) {
+func (r *reviewRepository) FindByCompanyID(companyID uuid.UUID, page, limit int, status, seedVersion string) ([]model.Review, int64, error) {
 	var reviews []model.Review
 	var total int64
 	offset := (page - 1) * limit
@@ -41,6 +42,7 @@ func (r *reviewRepository) FindByCompanyID(companyID uuid.UUID, page, limit int,
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
+	query = applySeedVersionFilter(query, seedVersion)
 
 	query.Count(&total)
 	err := query.
@@ -62,12 +64,13 @@ func (r *reviewRepository) FindByID(id uuid.UUID) (*model.Review, error) {
 	return &review, err
 }
 
-func (r *reviewRepository) FindRecent(limit int, status string) ([]model.Review, error) {
+func (r *reviewRepository) FindRecent(limit int, status, seedVersion string) ([]model.Review, error) {
 	var reviews []model.Review
 	query := r.db.Model(&model.Review{}).Preload("Company")
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
+	query = applySeedVersionFilter(query, seedVersion)
 	err := query.
 		Select("reviews.*, (SELECT COUNT(1) FROM comments WHERE comments.review_id = reviews.id AND comments.status = ?) AS comment_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS like_count, (SELECT COUNT(1) FROM review_votes rv WHERE rv.review_id = reviews.id AND rv.vote_type = ?) AS dislike_count", model.CommentStatusApproved, model.VoteLike, model.VoteDislike).
 		Order("created_at desc").
@@ -108,7 +111,7 @@ func (r *reviewRepository) UpdateStatus(id uuid.UUID, status model.ReviewStatus)
 	return r.db.Model(&model.Review{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (r *reviewRepository) FindAll(page, limit int, status, companyQuery string) ([]model.Review, int64, error) {
+func (r *reviewRepository) FindAll(page, limit int, status, companyQuery, seedVersion, createdDate string) ([]model.Review, int64, error) {
 	var reviews []model.Review
 	var total int64
 	offset := (page - 1) * limit
@@ -123,6 +126,10 @@ func (r *reviewRepository) FindAll(page, limit int, status, companyQuery string)
 	}
 	if companyQuery != "" {
 		query = query.Where("LOWER(companies.name) LIKE LOWER(?)", "%"+companyQuery+"%")
+	}
+	query = applySeedVersionFilter(query, seedVersion)
+	if createdDate != "" {
+		query = query.Where("DATE(reviews.created_at) = ?", createdDate)
 	}
 
 	query.Count(&total)
@@ -152,7 +159,7 @@ func (r *reviewRepository) RecalculateCompanyStats(companyID uuid.UUID) error {
 		Updates(map[string]interface{}{"avg_rating": stats.AvgRating, "total_reviews": stats.Total}).Error
 }
 
-func (r *reviewRepository) GetDailyReviewCounts(days int) ([]DailyReviewCount, error) {
+func (r *reviewRepository) GetDailyReviewCounts(days int, seedVersion string) ([]DailyReviewCount, error) {
 	if days <= 0 {
 		days = 7
 	}
@@ -171,10 +178,27 @@ func (r *reviewRepository) GetDailyReviewCounts(days int) ([]DailyReviewCount, e
 	LEFT JOIN reviews r
 	  ON DATE(r.created_at) = ds.day
 	 AND r.status = $2
+	 AND (
+	   $3 = ''
+	   OR r.seed_version = $3
+	 )
 	GROUP BY ds.day
 	ORDER BY ds.day ASC
 	`
 
-	err := r.db.Raw(query, days, model.StatusApproved).Scan(&rows).Error
+	err := r.db.Raw(query, days, model.StatusApproved, seedVersion).Scan(&rows).Error
 	return rows, err
+}
+
+func applySeedVersionFilter(query *gorm.DB, seedVersion string) *gorm.DB {
+	if seedVersion == "" {
+		return query
+	}
+	return query.Where("seed_version = ?", seedVersion)
+}
+
+func (r *reviewRepository) MarkAllAsSeedVersion(seedVersion string) error {
+	return r.db.Model(&model.Review{}).
+		Where("seed_version IS NULL OR seed_version = '' OR seed_version = ?", "live").
+		Update("seed_version", seedVersion).Error
 }

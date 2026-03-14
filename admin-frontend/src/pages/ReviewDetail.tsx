@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import axios from "axios"
+import { useToast } from "../components/ui/ToastProvider"
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
 
@@ -51,7 +52,10 @@ export default function ReviewDetail() {
   const [newComment, setNewComment] = useState("")
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState("")
+  const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null)
+  const [confirmDeleteReview, setConfirmDeleteReview] = useState(false)
   const adminToken = localStorage.getItem("admin_token")
+  const { pushToast } = useToast()
 
   const reload = () => {
     if (!id) return
@@ -79,11 +83,17 @@ export default function ReviewDetail() {
     const content = parentId ? replyContent.trim() : newComment.trim()
     if (!content) return
 
-    await axios.post(`${API_BASE}/reviews/${id}/comments`, {
-      author_name: "Admin",
-      content,
-      parent_comment_id: parentId || null,
-    })
+    try {
+      await axios.post(`${API_BASE}/reviews/${id}/comments`, {
+        author_name: "Admin",
+        content,
+        parent_comment_id: parentId || null,
+      })
+      pushToast("Đã gửi bình luận", "success")
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || "Gửi bình luận thất bại", "error")
+      return
+    }
 
     if (parentId) {
       setReplyingTo(null)
@@ -95,20 +105,32 @@ export default function ReviewDetail() {
   }
 
   const deleteComment = async (commentId: string) => {
-    if (!window.confirm("Xóa bình luận này?")) return
-    await axios.delete(`${API_BASE}/comments/${commentId}`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-    })
-    reload()
+    try {
+      await axios.delete(`${API_BASE}/comments/${commentId}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      pushToast("Đã xóa bình luận", "success")
+      reload()
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || "Xóa bình luận thất bại", "error")
+    } finally {
+      setConfirmDeleteCommentId(null)
+    }
   }
 
   const deleteReview = async () => {
     if (!id) return
-    if (!window.confirm("Xóa review này?")) return
-    await axios.delete(`${API_BASE}/reviews/${id}`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-    })
-    window.location.href = "/reviews"
+    try {
+      await axios.delete(`${API_BASE}/reviews/${id}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      pushToast("Đã xóa review", "success")
+      window.location.href = "/reviews"
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || "Xóa review thất bại", "error")
+    } finally {
+      setConfirmDeleteReview(false)
+    }
   }
 
   if (!review) {
@@ -120,7 +142,7 @@ export default function ReviewDetail() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Chi tiết Review</h2>
         <div className="flex items-center gap-4">
-          <button onClick={deleteReview} className="text-red-600 hover:underline text-sm">Xóa Review</button>
+          <button onClick={() => setConfirmDeleteReview(true)} className="text-red-600 hover:underline text-sm">Xóa Review</button>
           <Link to="/reviews" className="text-blue-600 hover:underline text-sm">← Quay lại danh sách</Link>
         </div>
       </div>
@@ -155,7 +177,7 @@ export default function ReviewDetail() {
               </button>
               <button
                 className="text-xs text-red-600 hover:underline mt-2 ml-3"
-                onClick={() => deleteComment(c.id)}
+                onClick={() => setConfirmDeleteCommentId(c.id)}
               >
                 Xóa
               </button>
@@ -178,7 +200,7 @@ export default function ReviewDetail() {
                     <div key={r.id} className="bg-white border rounded-lg p-3">
                       <div className="text-xs text-gray-500">{r.author_name} · {new Date(r.created_at).toLocaleString()}</div>
                       <p className="text-sm text-gray-700 mt-1">{r.content}</p>
-                      <button className="text-xs text-red-600 hover:underline mt-1" onClick={() => deleteComment(r.id)}>
+                      <button className="text-xs text-red-600 hover:underline mt-1" onClick={() => setConfirmDeleteCommentId(r.id)}>
                         Xóa
                       </button>
                     </div>
@@ -190,6 +212,48 @@ export default function ReviewDetail() {
           {topLevelComments.length === 0 && <div className="text-sm text-gray-500">Chưa có bình luận.</div>}
         </div>
       </div>
+
+      {confirmDeleteCommentId && (
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa bình luận</h3>
+            <p className="text-sm text-slate-600">Bạn có chắc muốn xóa bình luận này?</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setConfirmDeleteCommentId(null)} className="px-4 py-2 rounded-lg border">
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteComment(confirmDeleteCommentId)}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteReview && (
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa review</h3>
+            <p className="text-sm text-slate-600">Bạn có chắc muốn xóa review này?</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setConfirmDeleteReview(false)} className="px-4 py-2 rounded-lg border">
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={deleteReview}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

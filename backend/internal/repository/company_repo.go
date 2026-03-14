@@ -4,18 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/uuid"
-	"github.com/review/backend/internal/model"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/review-company/backend/internal/model"
 	"gorm.io/gorm"
 )
+
+var ErrDuplicateCompany = errors.New("company already exists")
 
 type CompanyRepository interface {
 	FindAll(page, limit int) ([]model.Company, int64, error)
 	FindByID(id uuid.UUID) (*model.Company, error)
+	FindTopByRating(limit int, order, seedVersion string) ([]model.Company, error)
 	Create(company *model.Company) error
 	Update(company *model.Company) error
 	Delete(id uuid.UUID) error
@@ -48,8 +53,45 @@ func (r *companyRepository) FindByID(id uuid.UUID) (*model.Company, error) {
 	return &company, err
 }
 
+func (r *companyRepository) FindTopByRating(limit int, order, seedVersion string) ([]model.Company, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	if order != "asc" {
+		order = "desc"
+	}
+
+	stats := r.db.Table("reviews").
+		Select("company_id, COALESCE(AVG(rating), 0) as avg_rating, COUNT(id) as total_reviews").
+		Where("status = ?", model.StatusApproved)
+	if seedVersion != "" {
+		stats = stats.Where("seed_version = ?", seedVersion)
+	}
+	stats = stats.Group("company_id")
+
+	rows := make([]model.Company, 0, limit)
+	err := r.db.Table("companies c").
+		Select("c.id, c.name, c.logo_url, c.website, c.industry, c.size, c.description, c.created_at, c.updated_at, s.avg_rating, s.total_reviews").
+		Joins("JOIN (?) s ON s.company_id = c.id", stats).
+		Order("s.avg_rating " + order + ", s.total_reviews desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
 func (r *companyRepository) Create(company *model.Company) error {
 	err := r.db.Create(company).Error
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrDuplicateCompany
+		}
+		var existing model.Company
+		lookupErr := r.db.Where("LOWER(name) = LOWER(?)", company.Name).First(&existing).Error
+		if lookupErr == nil {
+			return ErrDuplicateCompany
+		}
+	}
 	if err == nil {
 		r.indexToES(company)
 	}

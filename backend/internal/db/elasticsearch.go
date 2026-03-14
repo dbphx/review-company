@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/review/backend/internal/config"
+	"github.com/review-company/backend/internal/config"
 )
 
 var ES *elasticsearch.Client

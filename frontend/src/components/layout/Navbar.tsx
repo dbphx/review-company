@@ -35,7 +35,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <Link to="/" className="flex-shrink-0 flex items-center font-bold text-xl text-blue-600">
-              ReviewCongTy
+              ReviewCT
             </Link>
           </div>
           <div className="flex items-center gap-4">

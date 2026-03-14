@@ -26,6 +26,7 @@ type Review struct {
 	Cons         string         `gorm:"type:text" json:"cons"`
 	SalaryGross  *float64       `gorm:"type:numeric(15,2)" json:"salary_gross"`
 	InterviewExp string         `gorm:"type:text" json:"interview_exp"`
+	SeedVersion  string         `gorm:"type:varchar(20);index;default:'live'" json:"seed_version"`
 	Status       ReviewStatus   `gorm:"type:varchar(20);default:'APPROVED';index" json:"status"`
 	IPAddress    string         `gorm:"type:varchar(45)" json:"-"`
 	SessionID    string         `gorm:"type:varchar(255)" json:"-"`
@@ -50,6 +51,9 @@ func (r *Review) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	if r.Status == "" {
 		r.Status = StatusApproved
+	}
+	if r.SeedVersion == "" {
+		r.SeedVersion = "live"
 	}
 	return
 }

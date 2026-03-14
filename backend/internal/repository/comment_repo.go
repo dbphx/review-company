@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/google/uuid"
-	"github.com/review/backend/internal/model"
+	"github.com/review-company/backend/internal/model"
 	"gorm.io/gorm"
 )
 

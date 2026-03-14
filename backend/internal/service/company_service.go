@@ -4,15 +4,17 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/review/backend/internal/model"
-	"github.com/review/backend/internal/repository"
+	"github.com/review-company/backend/internal/model"
+	"github.com/review-company/backend/internal/repository"
 )
 
 var ErrCompanyHasReviews = errors.New("cannot delete company with existing reviews")
+var ErrDuplicateCompany = errors.New("company already exists")
 
 type CompanyService interface {
 	SearchCompanies(query string) ([]model.Company, error)
 	GetTopCompanies(page, limit int) ([]model.Company, int64, error)
+	GetTopCompaniesByRating(limit int, order, seedVersion string) ([]model.Company, error)
 	GetCompanyByID(id uuid.UUID) (*model.Company, error)
 	CreateCompany(company *model.Company) error
 	UpdateCompany(id uuid.UUID, input *model.Company) (*model.Company, error)
@@ -35,12 +37,20 @@ func (s *companyService) GetTopCompanies(page, limit int) ([]model.Company, int6
 	return s.repo.FindAll(page, limit)
 }
 
+func (s *companyService) GetTopCompaniesByRating(limit int, order, seedVersion string) ([]model.Company, error) {
+	return s.repo.FindTopByRating(limit, order, seedVersion)
+}
+
 func (s *companyService) GetCompanyByID(id uuid.UUID) (*model.Company, error) {
 	return s.repo.FindByID(id)
 }
 
 func (s *companyService) CreateCompany(company *model.Company) error {
-	return s.repo.Create(company)
+	err := s.repo.Create(company)
+	if err == repository.ErrDuplicateCompany {
+		return ErrDuplicateCompany
+	}
+	return err
 }
 
 func (s *companyService) UpdateCompany(id uuid.UUID, input *model.Company) (*model.Company, error) {

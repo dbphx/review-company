@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/review/backend/internal/config"
-	"github.com/review/backend/internal/model"
+	"github.com/review-company/backend/internal/config"
+	"github.com/review-company/backend/internal/model"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -29,9 +29,11 @@ func ConnectPostgres(cfg *config.Config) {
 
 	// Auto Migrate
 	err = db.AutoMigrate(
+		&model.SystemSetting{},
 		&model.Company{},
 		&model.Review{},
 		&model.Comment{},
+		&model.Visit{},
 		&model.ReviewVote{},
 		&model.CommentVote{},
 		&model.User{},

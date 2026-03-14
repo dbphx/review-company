@@ -21,5 +21,8 @@ func (a *AdminUser) BeforeCreate(tx *gorm.DB) (err error) {
 	if a.ID == uuid.Nil {
 		a.ID = uuid.New()
 	}
+	if a.Role == "" {
+		a.Role = "ADMIN"
+	}
 	return
 }

@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/review/backend/internal/model"
+	"github.com/review-company/backend/internal/model"
 	"gorm.io/gorm"
 )
 

@@ -14,10 +14,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
-	"github.com/review/backend/internal/config"
-	"github.com/review/backend/internal/db"
-	"github.com/review/backend/internal/model"
-	"github.com/review/backend/internal/repository"
+	"github.com/review-company/backend/internal/config"
+	"github.com/review-company/backend/internal/db"
+	"github.com/review-company/backend/internal/handler"
+	"github.com/review-company/backend/internal/model"
+	"github.com/review-company/backend/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -123,7 +124,8 @@ func main() {
 
 	// Seed Admin User
 	log.Println("Seeding Admin User...")
-	hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), 10)
+	transportHash := handler.HashPasswordForTransport("admin123")
+	hash, _ := bcrypt.GenerateFromPassword([]byte(transportHash), 10)
 	adminUser := model.AdminUser{
 		Email:    "admin@review.com",
 		Password: string(hash),

@@ -3,9 +3,9 @@ package handler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/review/backend/internal/db"
-	"github.com/review/backend/internal/model"
-	"github.com/review/backend/internal/service"
+	"github.com/review-company/backend/internal/db"
+	"github.com/review-company/backend/internal/model"
+	"github.com/review-company/backend/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -14,18 +14,19 @@ type voteRequest struct {
 }
 
 type ReviewHandler struct {
-	reviewService service.ReviewService
+	reviewService   service.ReviewService
+	dataModeService service.DataModeService
 }
 
-func NewReviewHandler(service service.ReviewService) *ReviewHandler {
-	return &ReviewHandler{reviewService: service}
+func NewReviewHandler(reviewService service.ReviewService, dataModeService service.DataModeService) *ReviewHandler {
+	return &ReviewHandler{reviewService: reviewService, dataModeService: dataModeService}
 }
 
 func (h *ReviewHandler) GetCompanyReviews(c *fiber.Ctx) error {
 	companyIDParam := c.Params("id")
 	companyID, err := uuid.Parse(companyIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid company id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id công ty không hợp lệ"})
 	}
 
 	page := c.QueryInt("page", 1)
@@ -67,8 +68,18 @@ func (h *ReviewHandler) GetAllReviews(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 10)
 	status := c.Query("status", "")
 	companyQuery := c.Query("company", "")
+	createdDate := c.Query("created_date", "")
+	seedVersion := c.Query("seed_version", "")
+	if seedVersion == "" && h.dataModeService != nil {
+		mode, err := h.dataModeService.GetMode()
+		if err == nil {
+			if mode == "v1" || mode == "v2" {
+				seedVersion = mode
+			}
+		}
+	}
 
-	reviews, total, err := h.reviewService.GetAllReviews(page, limit, status, companyQuery)
+	reviews, total, err := h.reviewService.GetAllReviews(page, limit, status, companyQuery, seedVersion, createdDate)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -85,12 +96,12 @@ func (h *ReviewHandler) GetReviewByID(c *fiber.Ctx) error {
 	reviewIDParam := c.Params("reviewId")
 	reviewID, err := uuid.Parse(reviewIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid review id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id review không hợp lệ"})
 	}
 
 	review, err := h.reviewService.GetReviewByID(reviewID)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "review not found"})
+		return c.Status(404).JSON(fiber.Map{"error": "không tìm thấy review"})
 	}
 
 	return c.JSON(review)
@@ -99,13 +110,13 @@ func (h *ReviewHandler) GetReviewByID(c *fiber.Ctx) error {
 func (h *ReviewHandler) CreateReview(c *fiber.Ctx) error {
 	var review model.Review
 	if err := c.BodyParser(&review); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+		return c.Status(400).JSON(fiber.Map{"error": "dữ liệu gửi lên không hợp lệ"})
 	}
 
 	companyIDParam := c.Params("id")
 	companyID, err := uuid.Parse(companyIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid company id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id công ty không hợp lệ"})
 	}
 	review.CompanyID = companyID
 
@@ -123,7 +134,7 @@ func (h *ReviewHandler) DeleteReview(c *fiber.Ctx) error {
 	reviewIDParam := c.Params("reviewId")
 	reviewID, err := uuid.Parse(reviewIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid review id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id review không hợp lệ"})
 	}
 
 	if err := h.reviewService.DeleteReview(reviewID); err != nil {
@@ -137,7 +148,7 @@ func (h *ReviewHandler) GetComments(c *fiber.Ctx) error {
 	reviewIDParam := c.Params("reviewId")
 	reviewID, err := uuid.Parse(reviewIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid review id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id review không hợp lệ"})
 	}
 
 	page := c.QueryInt("page", 1)
@@ -160,12 +171,12 @@ func (h *ReviewHandler) CreateComment(c *fiber.Ctx) error {
 	reviewIDParam := c.Params("reviewId")
 	reviewID, err := uuid.Parse(reviewIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid review id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id review không hợp lệ"})
 	}
 
 	var comment model.Comment
 	if err := c.BodyParser(&comment); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+		return c.Status(400).JSON(fiber.Map{"error": "dữ liệu gửi lên không hợp lệ"})
 	}
 
 	comment.ReviewID = reviewID
@@ -182,7 +193,7 @@ func (h *ReviewHandler) DeleteComment(c *fiber.Ctx) error {
 	commentIDParam := c.Params("commentId")
 	commentID, err := uuid.Parse(commentIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid comment id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id bình luận không hợp lệ"})
 	}
 
 	if err := h.reviewService.DeleteComment(commentID); err != nil {
@@ -196,17 +207,17 @@ func (h *ReviewHandler) VoteReview(c *fiber.Ctx) error {
 	reviewIDParam := c.Params("reviewId")
 	reviewID, err := uuid.Parse(reviewIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid review id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id review không hợp lệ"})
 	}
 
 	var req voteRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+		return c.Status(400).JSON(fiber.Map{"error": "dữ liệu gửi lên không hợp lệ"})
 	}
 
 	voteType, ok := model.ParseVoteType(req.Vote)
 	if !ok {
-		return c.Status(400).JSON(fiber.Map{"error": "vote must be like or dislike"})
+		return c.Status(400).JSON(fiber.Map{"error": "giá trị vote chỉ được là like hoặc dislike"})
 	}
 
 	sessionKey := c.Get("X-Session-ID")
@@ -217,7 +228,7 @@ func (h *ReviewHandler) VoteReview(c *fiber.Ctx) error {
 	err = h.reviewService.VoteReview(reviewID, voteType, sessionKey)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"error": "review not found"})
+			return c.Status(404).JSON(fiber.Map{"error": "không tìm thấy review"})
 		}
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -239,17 +250,17 @@ func (h *ReviewHandler) VoteComment(c *fiber.Ctx) error {
 	commentIDParam := c.Params("commentId")
 	commentID, err := uuid.Parse(commentIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid comment id"})
+		return c.Status(400).JSON(fiber.Map{"error": "id bình luận không hợp lệ"})
 	}
 
 	var req voteRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+		return c.Status(400).JSON(fiber.Map{"error": "dữ liệu gửi lên không hợp lệ"})
 	}
 
 	voteType, ok := model.ParseVoteType(req.Vote)
 	if !ok {
-		return c.Status(400).JSON(fiber.Map{"error": "vote must be like or dislike"})
+		return c.Status(400).JSON(fiber.Map{"error": "giá trị vote chỉ được là like hoặc dislike"})
 	}
 
 	sessionKey := c.Get("X-Session-ID")
@@ -260,7 +271,7 @@ func (h *ReviewHandler) VoteComment(c *fiber.Ctx) error {
 	err = h.reviewService.VoteComment(commentID, voteType, sessionKey)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"error": "comment not found"})
+			return c.Status(404).JSON(fiber.Map{"error": "không tìm thấy bình luận"})
 		}
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

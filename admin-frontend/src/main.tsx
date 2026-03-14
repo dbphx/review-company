@@ -7,8 +7,11 @@ import Dashboard from './pages/Dashboard.tsx'
 import Reviews from './pages/Reviews.tsx'
 import ReviewDetail from './pages/ReviewDetail.tsx'
 import Companies from './pages/Companies.tsx'
+import AdminUsers from './pages/AdminUsers.tsx'
+import ActiveSessions from './pages/ActiveSessions.tsx'
 import Login from './pages/Login.tsx'
 import RouteError from './pages/RouteError.tsx'
+import { ToastProvider } from './components/ui/ToastProvider.tsx'
 import './index.css'
 
 const router = createBrowserRouter([
@@ -42,6 +45,14 @@ const router = createBrowserRouter([
             path: "/companies",
             element: <Companies />,
           },
+          {
+            path: "/admin-users",
+            element: <AdminUsers />,
+          },
+          {
+            path: "/active-sessions",
+            element: <ActiveSessions />,
+          },
         ],
       }
     ],
@@ -50,6 +61,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>
   </StrictMode>,
 )

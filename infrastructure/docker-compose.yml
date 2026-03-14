@@ -43,6 +43,14 @@ services:
       - elasticsearch
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: review_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+
 # Khai báo volume để dữ liệu không bị mất khi stop/xóa container
 volumes:
   postgres_data:

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
+import { useToast } from "../components/ui/ToastProvider"
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
 
@@ -10,6 +11,13 @@ export default function Login() {
   const [password, setPassword] = useState("admin123")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const { pushToast } = useToast()
+
+  const hashPassword = async (input: string) => {
+    const data = new TextEncoder().encode(input)
+    const digest = await crypto.subtle.digest("SHA-256", data)
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("")
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,12 +25,16 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const res = await axios.post(`${API_BASE}/admin/login`, { email, password })
+      const passwordHash = await hashPassword(password)
+      const res = await axios.post(`${API_BASE}/admin/login`, { email, password_hash: passwordHash })
       localStorage.setItem("admin_token", res.data.token)
       localStorage.setItem("admin_user", JSON.stringify(res.data.admin))
+      pushToast("Đăng nhập thành công", "success")
       navigate("/")
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Đăng nhập thất bại")
+      const msg = err?.response?.data?.error || "Đăng nhập thất bại"
+      setError(msg)
+      pushToast(msg, "error")
     } finally {
       setLoading(false)
     }
