@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Search } from "lucide-react"
 import api from "../api"
+import RequestCompanyModal from "../components/company/RequestCompanyModal"
 
 interface Company {
   id: string
@@ -54,16 +55,25 @@ export default function Home() {
   const [results, setResults] = useState<Company[]>([])
   const [searching, setSearching] = useState(false)
   const [topCompanies, setTopCompanies] = useState<Company[]>([])
+  const [companySort, setCompanySort] = useState<"rating" | "latest_review" | "toxic">("rating")
   const [latestReviews, setLatestReviews] = useState<ReviewItem[]>([])
+  const [requestModalOpen, setRequestModalOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Fetch top companies on load
-    api.get("/companies/top?limit=6&order=desc").then((res) => {
+    const params =
+      companySort === "rating"
+        ? "/companies/top?limit=6&order=desc"
+        : `/companies/top?limit=6&sort_by=${companySort}`
+
+    api.get(params).then((res) => {
       setTopCompanies(res.data?.data || [])
     }).catch(() => {
       setTopCompanies([])
     })
+  }, [companySort])
+
+  useEffect(() => {
     api.get("/reviews/recent?limit=5").then((res) => {
       setLatestReviews(res.data?.data || [])
     }).catch(() => {
@@ -146,11 +156,40 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        <button
+          onClick={() => setRequestModalOpen(true)}
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/95 text-blue-700 px-4 py-2 text-sm font-semibold hover:bg-white"
+        >
+          Không thấy công ty? Gửi yêu cầu thêm mới
+        </button>
       </section>
 
       {/* Top Companies */}
       <section>
-        <h2 className="text-2xl font-bold mb-6 text-gray-900">Công ty nổi bật</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Công ty nổi bật</h2>
+          <div className="inline-flex items-center gap-2 bg-white border rounded-lg p-1">
+            <button
+              onClick={() => setCompanySort("rating")}
+              className={`px-3 py-1.5 text-sm rounded-md transition ${companySort === "rating" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              Điểm cao
+            </button>
+            <button
+              onClick={() => setCompanySort("latest_review")}
+              className={`px-3 py-1.5 text-sm rounded-md transition ${companySort === "latest_review" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              Review mới nhất
+            </button>
+            <button
+              onClick={() => setCompanySort("toxic")}
+              className={`px-3 py-1.5 text-sm rounded-md transition ${companySort === "toxic" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              Toxic nhất
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {topCompanies?.map((c) => (
             <Link key={c.id} to={`/company/${c.id}`} className="block">
@@ -194,9 +233,9 @@ export default function Home() {
             <div key={r.id} className="bg-white rounded-xl border p-5 hover:shadow-sm transition">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">
+                  <p className="text-sm text-slate-700 font-medium mb-1">
                     {r.company?.name ? (
-                      <Link to={`/company/${r.company.id}`} className="text-blue-600 hover:underline">
+                      <Link to={`/company/${r.company.id}`} className="text-blue-700 hover:text-blue-800 hover:underline font-semibold">
                         {r.company.name}
                       </Link>
                     ) : "Không xác định công ty"}
@@ -213,6 +252,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <RequestCompanyModal open={requestModalOpen} onClose={() => setRequestModalOpen(false)} />
     </div>
   )
 }

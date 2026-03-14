@@ -31,6 +31,7 @@ func ConnectPostgres(cfg *config.Config) {
 	err = db.AutoMigrate(
 		&model.SystemSetting{},
 		&model.Company{},
+		&model.CompanyRequest{},
 		&model.Review{},
 		&model.Comment{},
 		&model.Visit{},

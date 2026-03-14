@@ -23,6 +23,15 @@ interface CompanyPayload {
   description: string
 }
 
+interface CompanyRequestItem {
+  id: string
+  name: string
+  logo_url: string
+  size: string
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  created_at: string
+}
+
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api"
 
 const emptyPayload: CompanyPayload = {
@@ -70,6 +79,8 @@ export default function Companies() {
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [confirmDeleteCompany, setConfirmDeleteCompany] = useState<CompanyItem | null>(null)
+  const [companyRequests, setCompanyRequests] = useState<CompanyRequestItem[]>([])
+  const [requestsLoading, setRequestsLoading] = useState(false)
   const { pushToast } = useToast()
 
   const adminToken = localStorage.getItem("admin_token")
@@ -90,9 +101,27 @@ export default function Companies() {
     setTotal(res.data?.total || 0)
   }
 
+  const loadCompanyRequests = async () => {
+    setRequestsLoading(true)
+    try {
+      const res = await axios.get(`${API_BASE}/admin/company-requests?status=PENDING`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      setCompanyRequests(res.data?.data || [])
+    } catch {
+      setCompanyRequests([])
+    } finally {
+      setRequestsLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadCompanies()
   }, [page, limit, query])
+
+  useEffect(() => {
+    loadCompanyRequests()
+  }, [])
 
   useEffect(() => {
     if (page > 1 && companies.length === 0) {
@@ -174,6 +203,20 @@ export default function Companies() {
     }
   }
 
+  const resolveCompanyRequest = async (request: CompanyRequestItem, status: "APPROVED" | "REJECTED") => {
+    try {
+      await axios.patch(
+        `${API_BASE}/admin/company-requests/${request.id}`,
+        { status },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      )
+      pushToast(status === "APPROVED" ? `Đã duyệt ${request.name}` : `Đã từ chối ${request.name}`, "success")
+      await Promise.all([loadCompanyRequests(), loadCompanies()])
+    } catch (err: any) {
+      pushToast(err?.response?.data?.error || "Xử lý yêu cầu thất bại", "error")
+    }
+  }
+
   const filtered = companies
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
@@ -194,6 +237,56 @@ export default function Companies() {
           placeholder="Tìm theo tên, website, ngành"
           className="w-full border rounded-lg px-3 py-2"
         />
+      </div>
+
+      <div className="bg-white border rounded-2xl shadow-sm p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900">Yêu cầu thêm công ty</h3>
+          <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+            {requestsLoading ? "..." : `${companyRequests.length} chờ duyệt`}
+          </span>
+        </div>
+
+        {companyRequests.length === 0 && (
+          <p className="text-sm text-slate-500">Hiện không có yêu cầu nào.</p>
+        )}
+
+        {companyRequests.length > 0 && (
+          <div className="space-y-3">
+            {companyRequests.map((req) => (
+              <div key={req.id} className="border rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={req.logo_url || fallbackLogo(req.name)}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null
+                      e.currentTarget.src = fallbackLogo(req.name)
+                    }}
+                    className="w-10 h-10 rounded border object-contain bg-white"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{req.name}</p>
+                    <p className="text-xs text-slate-500">Quy mô: {req.size || "Chưa cung cấp"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    onClick={() => resolveCompanyRequest(req, "APPROVED")}
+                  >
+                    Duyệt
+                  </button>
+                  <button
+                    className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    onClick={() => resolveCompanyRequest(req, "REJECTED")}
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
