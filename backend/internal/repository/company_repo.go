@@ -21,6 +21,7 @@ type CompanyRepository interface {
 	FindAll(page, limit int) ([]model.Company, int64, error)
 	FindByID(id uuid.UUID) (*model.Company, error)
 	FindTopByRating(limit int, order, seedVersion string) ([]model.Company, error)
+	FindTopBySort(limit int, sortBy, seedVersion string) ([]model.Company, error)
 	Create(company *model.Company) error
 	Update(company *model.Company) error
 	Delete(id uuid.UUID) error
@@ -74,6 +75,37 @@ func (r *companyRepository) FindTopByRating(limit int, order, seedVersion string
 		Select("c.id, c.name, c.logo_url, c.website, c.industry, c.size, c.description, c.created_at, c.updated_at, s.avg_rating, s.total_reviews").
 		Joins("JOIN (?) s ON s.company_id = c.id", stats).
 		Order("s.avg_rating " + order + ", s.total_reviews desc").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (r *companyRepository) FindTopBySort(limit int, sortBy, seedVersion string) ([]model.Company, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+
+	sortOrder := "s.avg_rating desc, s.total_reviews desc"
+	switch sortBy {
+	case "toxic":
+		sortOrder = "s.avg_rating asc, s.total_reviews desc"
+	case "latest_review":
+		sortOrder = "s.last_review_at desc, s.total_reviews desc"
+	}
+
+	stats := r.db.Table("reviews").
+		Select("company_id, COALESCE(AVG(rating), 0) as avg_rating, COUNT(id) as total_reviews, MAX(created_at) as last_review_at").
+		Where("status = ?", model.StatusApproved)
+	if seedVersion != "" {
+		stats = stats.Where("seed_version = ?", seedVersion)
+	}
+	stats = stats.Group("company_id")
+
+	rows := make([]model.Company, 0, limit)
+	err := r.db.Table("companies c").
+		Select("c.id, c.name, c.logo_url, c.website, c.industry, c.size, c.description, c.created_at, c.updated_at, s.avg_rating, s.total_reviews").
+		Joins("JOIN (?) s ON s.company_id = c.id", stats).
+		Order(sortOrder).
 		Limit(limit).
 		Scan(&rows).Error
 	return rows, err

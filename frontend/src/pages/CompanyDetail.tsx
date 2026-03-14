@@ -239,9 +239,9 @@ export default function CompanyDetail() {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-sm text-gray-600 mb-4">
             <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">{company.industry}</span>
             <span className="flex items-center gap-1"><Briefcase className="w-4 h-4"/> {company.size}</span>
-            {company.website && <a href={company.website} target="_blank" className="text-blue-500 hover:underline">{company.website}</a>}
+            {company.website && <a href={company.website} target="_blank" className="text-blue-500 hover:underline break-all [overflow-wrap:anywhere]">{company.website}</a>}
           </div>
-          <p className="text-gray-700 leading-relaxed text-sm mb-4 line-clamp-3">
+          <p className="text-gray-700 leading-relaxed text-sm mb-4 line-clamp-3 break-words [overflow-wrap:anywhere]">
             {company.description}
           </p>
           <div className="flex items-center justify-center sm:justify-start gap-4">
@@ -358,21 +358,21 @@ export default function CompanyDetail() {
                 </div>
               </div>
               
-              <h3 className="text-lg font-bold">{review.title}</h3>
-              <p className="text-gray-700 whitespace-pre-wrap">{review.content}</p>
+              <h3 className="text-lg font-bold break-words [overflow-wrap:anywhere]">{review.title}</h3>
+              <p className="text-gray-700 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{review.content}</p>
               
               {(review.pros || review.cons) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 bg-slate-50 p-4 rounded-xl border">
                   {review.pros && (
                     <div>
                       <h5 className="text-green-700 font-semibold text-sm mb-1 flex items-center gap-1"><ThumbsUp className="w-4 h-4"/> Ưu điểm</h5>
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{review.pros}</p>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{review.pros}</p>
                     </div>
                   )}
                   {review.cons && (
                     <div>
                       <h5 className="text-red-700 font-semibold text-sm mb-1 flex items-center gap-1"><ThumbsDown className="w-4 h-4"/> Nhược điểm</h5>
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{review.cons}</p>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{review.cons}</p>
                     </div>
                   )}
                 </div>
@@ -401,7 +401,7 @@ export default function CompanyDetail() {
                     {shownTopLevelComments.map((c) => (
                       <div key={c.id} className="bg-white border rounded-lg p-3">
                         <div className="text-xs text-gray-500">{c.author_name} · {new Date(c.created_at).toLocaleString()}</div>
-                        <p className="text-sm text-gray-700 mt-1">{c.content}</p>
+                        <p className="text-sm text-gray-700 mt-1 break-words [overflow-wrap:anywhere]">{c.content}</p>
                         <button
                           className="text-xs text-blue-600 hover:underline mt-1"
                           onClick={() => setReplyingTo((prev) => ({ ...prev, [review.id]: prev[review.id] === c.id ? null : c.id }))}
@@ -432,7 +432,7 @@ export default function CompanyDetail() {
                             {(repliesByParent[c.id] || []).map((r) => (
                               <div key={r.id} className="bg-slate-50 border rounded-lg p-2">
                                 <div className="text-xs text-gray-500">{r.author_name} · {new Date(r.created_at).toLocaleString()}</div>
-                                <p className="text-sm text-gray-700 mt-1">{r.content}</p>
+                                <p className="text-sm text-gray-700 mt-1 break-words [overflow-wrap:anywhere]">{r.content}</p>
                                 <div className="mt-1 flex items-center gap-3 text-xs">
                                   <button className="text-green-600 hover:underline" onClick={() => voteComment(r.id, "like")}>Hữu ích ({r.like_count || 0})</button>
                                   <button className="text-red-600 hover:underline" onClick={() => voteComment(r.id, "dislike")}>Không hữu ích ({r.dislike_count || 0})</button>

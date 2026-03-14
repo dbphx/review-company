@@ -15,6 +15,7 @@ type CompanyService interface {
 	SearchCompanies(query string) ([]model.Company, error)
 	GetTopCompanies(page, limit int) ([]model.Company, int64, error)
 	GetTopCompaniesByRating(limit int, order, seedVersion string) ([]model.Company, error)
+	GetTopCompaniesBySort(limit int, sortBy, seedVersion string) ([]model.Company, error)
 	GetCompanyByID(id uuid.UUID) (*model.Company, error)
 	CreateCompany(company *model.Company) error
 	UpdateCompany(id uuid.UUID, input *model.Company) (*model.Company, error)
@@ -39,6 +40,10 @@ func (s *companyService) GetTopCompanies(page, limit int) ([]model.Company, int6
 
 func (s *companyService) GetTopCompaniesByRating(limit int, order, seedVersion string) ([]model.Company, error) {
 	return s.repo.FindTopByRating(limit, order, seedVersion)
+}
+
+func (s *companyService) GetTopCompaniesBySort(limit int, sortBy, seedVersion string) ([]model.Company, error) {
+	return s.repo.FindTopBySort(limit, sortBy, seedVersion)
 }
 
 func (s *companyService) GetCompanyByID(id uuid.UUID) (*model.Company, error) {

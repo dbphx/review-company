@@ -41,15 +41,21 @@ func (h *CompanyHandler) GetTopCompanies(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
 	order := strings.ToLower(strings.TrimSpace(c.Query("order", "")))
-	if order == "asc" || order == "desc" {
-		seedVersion := ""
-		if h.dataModeService != nil {
-			mode, err := h.dataModeService.GetMode()
-			if err == nil && mode != "all" {
-				seedVersion = mode
-			}
+	sortBy := strings.ToLower(strings.TrimSpace(c.Query("sort_by", "")))
+	seedVersion := h.resolveSeedVersion(c)
+	if sortBy == "latest_review" || sortBy == "toxic" {
+		rows, err := h.companyService.GetTopCompaniesBySort(limit, sortBy, seedVersion)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
-
+		return c.JSON(fiber.Map{
+			"data":  rows,
+			"total": len(rows),
+			"page":  1,
+			"limit": limit,
+		})
+	}
+	if order == "asc" || order == "desc" {
 		rows, err := h.companyService.GetTopCompaniesByRating(limit, order, seedVersion)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -72,6 +78,27 @@ func (h *CompanyHandler) GetTopCompanies(c *fiber.Ctx) error {
 		"page":  page,
 		"limit": limit,
 	})
+}
+
+func (h *CompanyHandler) resolveSeedVersion(c *fiber.Ctx) string {
+	seedVersion := strings.ToLower(strings.TrimSpace(c.Query("seed_version", "")))
+	if seedVersion == "v1" || seedVersion == "v2" {
+		return seedVersion
+	}
+
+	if h.dataModeService == nil {
+		return ""
+	}
+
+	mode, err := h.dataModeService.GetMode()
+	if err != nil || mode == "all" {
+		return ""
+	}
+	if mode == "v1" || mode == "v2" {
+		return mode
+	}
+
+	return ""
 }
 
 func (h *CompanyHandler) GetCompanyStats(c *fiber.Ctx) error {

@@ -34,8 +34,9 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
-            <Link to="/" className="flex-shrink-0 flex items-center font-bold text-xl text-blue-600">
-              ReviewCT
+            <Link to="/" className="flex-shrink-0 flex items-center font-extrabold text-2xl tracking-tight text-teal-700">
+              <img src="/reviewct.svg" alt="ReviewCT" className="w-9 h-9 mr-3 drop-shadow-sm" />
+              <span className="bg-gradient-to-r from-teal-700 via-sky-600 to-emerald-600 bg-clip-text text-transparent">ReviewCT</span>
             </Link>
           </div>
           <div className="flex items-center gap-4">
