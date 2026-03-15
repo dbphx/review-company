@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useToast } from "../components/ui/ToastProvider"
+import ActionMenu from "../components/ui/ActionMenu"
 
 interface SessionItem {
   session_id: string
@@ -90,7 +91,7 @@ export default function ActiveSessions() {
         </button>
       </div>
 
-      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-2xl shadow-sm overflow-x-auto overflow-y-visible">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b text-left text-slate-600">
             <tr>
@@ -111,14 +112,16 @@ export default function ActiveSessions() {
                 <td className="px-4 py-3">{Math.max(0, Math.floor((s.ttl_seconds || 0) / 60))} phút</td>
                 <td className="px-4 py-3 text-xs text-slate-500">{s.session_id}</td>
                 <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    disabled={s.role !== "MOD" || revokingSessionId === s.session_id}
-                    onClick={() => revokeSession(s.session_id, s.role)}
-                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition disabled:opacity-60"
-                  >
-                    {revokingSessionId === s.session_id ? "Đang xóa..." : "Xóa phiên"}
-                  </button>
+                  <ActionMenu menuClassName="min-w-[140px]">
+                      <button
+                        type="button"
+                        disabled={s.role !== "MOD" || revokingSessionId === s.session_id}
+                        onClick={() => revokeSession(s.session_id, s.role)}
+                        className="block w-full text-left px-3 py-2 text-sm rounded-md text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                      >
+                        {revokingSessionId === s.session_id ? "Đang xóa..." : "Xóa phiên"}
+                      </button>
+                  </ActionMenu>
                 </td>
               </tr>
             ))}

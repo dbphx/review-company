@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { Link } from "react-router-dom"
 import { useToast } from "../components/ui/ToastProvider"
+import ActionMenu from "../components/ui/ActionMenu"
 
 interface CompanyInfo {
   id: string
@@ -38,7 +39,9 @@ export default function Reviews() {
     const companyParam = query ? `&company=${encodeURIComponent(query)}` : ""
     const createdDateParam = createdDate ? `&created_date=${encodeURIComponent(createdDate)}` : ""
     const seedVersionParam = seedVersion && seedVersion !== "all" ? `&seed_version=${encodeURIComponent(seedVersion)}` : ""
-    const res = await axios.get(`${API_BASE}/reviews?page=${page}&limit=${limit}${companyParam}${createdDateParam}${seedVersionParam}`)
+    const res = await axios.get(`${API_BASE}/admin/reviews?page=${page}&limit=${limit}${companyParam}${createdDateParam}${seedVersionParam}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })
     setReviews(res.data.data || [])
     setTotal(res.data.total || 0)
   }
@@ -149,28 +152,28 @@ export default function Reviews() {
                 <td className="px-4 py-3 align-top w-[8%]">{r.rating}</td>
                 <td className="px-4 py-3 align-top w-[16%] whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                 <td className="px-4 py-3 align-top w-[18%]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
-                      to={`/reviews/${r.id}`}
-                    >
-                      Quản lý
-                    </Link>
-                    <a
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
-                      href={`http://localhost:5173/company/${r.company?.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                    Portal
-                    </a>
-                    <button
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition"
-                      onClick={() => setConfirmDeleteReviewId(r.id)}
-                    >
-                      Xóa
-                    </button>
-                  </div>
+                  <ActionMenu menuClassName="min-w-[150px]" placement="top">
+                      <Link
+                        className="block w-full text-left px-3 py-2 text-sm rounded-md text-indigo-700 hover:bg-indigo-50"
+                        to={`/reviews/${r.id}`}
+                      >
+                        Quản lý
+                      </Link>
+                      <a
+                        className="block w-full text-left px-3 py-2 text-sm rounded-md text-blue-700 hover:bg-blue-50"
+                        href={`http://localhost:5173/company/${r.company?.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Portal
+                      </a>
+                      <button
+                        className="block w-full text-left px-3 py-2 text-sm rounded-md text-rose-700 hover:bg-rose-50"
+                        onClick={() => setConfirmDeleteReviewId(r.id)}
+                      >
+                        Xóa
+                      </button>
+                  </ActionMenu>
                 </td>
               </tr>
             ))}
@@ -202,8 +205,8 @@ export default function Reviews() {
       </div>
 
       {confirmDeleteReviewId && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa review</h3>
             <p className="text-sm text-slate-600">Bạn có chắc muốn xóa review này?</p>
             <div className="flex justify-end gap-3 pt-2">

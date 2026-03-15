@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useToast } from "../components/ui/ToastProvider"
+import ActionMenu from "../components/ui/ActionMenu"
 
 interface AdminUser {
   id: string
@@ -136,7 +137,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-2xl shadow-sm overflow-x-auto overflow-y-visible">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b text-left text-slate-600">
             <tr>
@@ -156,24 +157,24 @@ export default function AdminUsers() {
                 <td className="px-4 py-3">{new Date(u.created_at).toLocaleString()}</td>
                 <td className="px-4 py-3">
                   {isAdminRole ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {u.role === "MOD" && (
+                    <ActionMenu menuClassName="min-w-[170px]">
+                        {u.role === "MOD" && (
+                          <button
+                            className="block w-full text-left px-3 py-2 text-sm rounded-md text-amber-700 hover:bg-amber-50 disabled:opacity-60"
+                            onClick={() => revokeModSessions(u.id)}
+                            disabled={revokingId === u.id}
+                          >
+                            {revokingId === u.id ? "Đang thu hồi..." : "Thu hồi phiên"}
+                          </button>
+                        )}
                         <button
-                          className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition disabled:opacity-60"
-                          onClick={() => revokeModSessions(u.id)}
-                          disabled={revokingId === u.id}
+                          className="block w-full text-left px-3 py-2 text-sm rounded-md text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                          onClick={() => setDeletingId(u.id)}
+                          disabled={u.id === currentAdmin.id}
                         >
-                          {revokingId === u.id ? "Đang thu hồi..." : "Thu hồi phiên"}
+                          {u.id === currentAdmin.id ? "Đang đăng nhập" : "Xóa"}
                         </button>
-                      )}
-                      <button
-                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition disabled:opacity-60"
-                        onClick={() => setDeletingId(u.id)}
-                        disabled={u.id === currentAdmin.id}
-                      >
-                        {u.id === currentAdmin.id ? "Đang đăng nhập" : "Xóa"}
-                      </button>
-                    </div>
+                    </ActionMenu>
                   ) : (
                     <span className="text-slate-400 text-xs">Không có quyền</span>
                   )}
@@ -190,8 +191,8 @@ export default function AdminUsers() {
       </div>
 
       {deletingId && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa tài khoản admin</h3>
             <p className="text-sm text-slate-600">Bạn có chắc muốn xóa tài khoản này?</p>
             <div className="flex justify-end gap-3 pt-2">
@@ -203,8 +204,8 @@ export default function AdminUsers() {
       )}
 
       {openCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <form onSubmit={createUser} className="w-full max-w-xl bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <form onSubmit={createUser} className="w-full max-w-xl bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Thêm tài khoản quản trị</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên hiển thị" className="border rounded-lg px-3 py-2" disabled={!isAdminRole} />

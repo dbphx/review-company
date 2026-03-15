@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useToast } from "../components/ui/ToastProvider"
+import ActionMenu from "../components/ui/ActionMenu"
 
 interface CompanyItem {
   id: string
@@ -95,14 +96,18 @@ export default function Companies() {
   const loadCompanies = async () => {
     const q = query.trim()
     if (q) {
-      const res = await axios.get(`${API_BASE}/search?q=${encodeURIComponent(q)}`)
+      const res = await axios.get(`${API_BASE}/admin/search?q=${encodeURIComponent(q)}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
       const rows: CompanyItem[] = res.data || []
       setCompanies(rows)
       setTotal(rows.length)
       return
     }
 
-    const res = await axios.get(`${API_BASE}/companies/top?page=${page}&limit=${limit}`)
+    const res = await axios.get(`${API_BASE}/admin/companies/top?page=${page}&limit=${limit}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })
     const rows: CompanyItem[] = res.data?.data || []
     setCompanies(rows)
     setTotal(res.data?.total || 0)
@@ -120,6 +125,10 @@ export default function Companies() {
     } finally {
       setRequestsLoading(false)
     }
+  }
+
+  const reloadCompanyViews = async () => {
+    await Promise.all([loadCompanies(), loadCompanyRequests()])
   }
 
   useEffect(() => {
@@ -184,9 +193,15 @@ export default function Companies() {
           headers: { Authorization: `Bearer ${adminToken}` },
         })
         pushToast("Thêm công ty thành công", "success")
+        if (query.trim()) {
+          setQuery("")
+        }
+        if (page !== 1) {
+          setPage(1)
+        }
       }
       closeForm()
-      await loadCompanies()
+      await reloadCompanyViews()
     } catch (err: any) {
       const msg = err?.response?.data?.error || "Lưu công ty thất bại"
       setError(msg)
@@ -201,7 +216,7 @@ export default function Companies() {
       await axios.delete(`${API_BASE}/companies/${company.id}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       })
-      await loadCompanies()
+      await reloadCompanyViews()
       pushToast(`Đã xóa công ty ${company.name}`, "success")
     } catch (err: any) {
       pushToast(err?.response?.data?.error || "Xóa công ty thất bại", "error")
@@ -228,7 +243,7 @@ export default function Companies() {
         { headers: { Authorization: `Bearer ${adminToken}` } }
       )
       pushToast(status === "APPROVED" ? `Đã duyệt ${request.name}` : `Đã từ chối ${request.name}`, "success")
-      await Promise.all([loadCompanyRequests(), loadCompanies()])
+      await reloadCompanyViews()
     } catch (err: any) {
       pushToast(err?.response?.data?.error || "Xử lý yêu cầu thất bại", "error")
     }
@@ -336,27 +351,27 @@ export default function Companies() {
                     <p className="text-xs text-slate-500">Quy mô: {req.size || "Chưa cung cấp"}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    onClick={() => openApproveRequestModal(req)}
-                  >
-                    Duyệt
-                  </button>
-                  <button
-                    className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                    onClick={() => resolveCompanyRequest(req, "REJECTED")}
-                  >
-                    Từ chối
-                  </button>
-                </div>
+                <ActionMenu menuClassName="min-w-[160px]">
+                    <button
+                      className="w-full text-left px-3 py-2 text-sm rounded-md text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => openApproveRequestModal(req)}
+                    >
+                      Duyệt yêu cầu
+                    </button>
+                    <button
+                      className="w-full text-left px-3 py-2 text-sm rounded-md text-rose-700 hover:bg-rose-50"
+                      onClick={() => resolveCompanyRequest(req, "REJECTED")}
+                    >
+                      Từ chối yêu cầu
+                    </button>
+                </ActionMenu>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-2xl shadow-sm overflow-x-auto overflow-y-visible">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b text-left text-slate-600">
             <tr>
@@ -390,20 +405,20 @@ export default function Companies() {
                 <td className="px-4 py-3">{c.website ? <a className="text-blue-600 hover:underline" href={c.website} target="_blank" rel="noreferrer">{c.website}</a> : "-"}</td>
                 <td className="px-4 py-3">{c.total_reviews} ({c.avg_rating.toFixed(1)}★)</td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition"
-                      onClick={() => openEdit(c)}
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition"
-                      onClick={() => setConfirmDeleteCompany(c)}
-                    >
-                      Xóa
-                    </button>
-                  </div>
+                  <ActionMenu menuClassName="min-w-[140px]">
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm rounded-md text-indigo-700 hover:bg-indigo-50"
+                        onClick={() => openEdit(c)}
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm rounded-md text-rose-700 hover:bg-rose-50"
+                        onClick={() => setConfirmDeleteCompany(c)}
+                      >
+                        Xóa
+                      </button>
+                  </ActionMenu>
                 </td>
               </tr>
             ))}
@@ -437,8 +452,8 @@ export default function Companies() {
       )}
 
       {formOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <form onSubmit={saveCompany} className="w-full max-w-2xl bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <form onSubmit={saveCompany} className="w-full max-w-2xl bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">{editing ? "Cập nhật công ty" : "Thêm công ty mới"}</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -470,8 +485,8 @@ export default function Companies() {
       )}
 
       {confirmDeleteCompany && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa công ty</h3>
             <p className="text-sm text-slate-600">
               Bạn có chắc muốn xóa <span className="font-semibold">{confirmDeleteCompany.name}</span>?
@@ -493,8 +508,8 @@ export default function Companies() {
       )}
 
       {approvingRequest && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <form onSubmit={confirmApproveRequest} className="w-full max-w-2xl bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <form onSubmit={confirmApproveRequest} className="w-full max-w-2xl bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Duyệt yêu cầu và tạo công ty</h3>
             <p className="text-sm text-slate-600">Nhập đầy đủ thông tin công ty như form thêm công ty ở Admin, sau đó xác nhận tạo.</p>
 

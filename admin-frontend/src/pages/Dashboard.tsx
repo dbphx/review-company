@@ -50,12 +50,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     const adminToken = localStorage.getItem("admin_token")
+    const authHeaders = { headers: { Authorization: `Bearer ${adminToken}` } }
 
-    axios.get(`${API_BASE}/companies/stats/summary`).then((res) => {
+    axios.get(`${API_BASE}/admin/companies/stats/summary`, authHeaders).then((res) => {
       setStats(res.data)
     })
 
-    axios.get(`${API_BASE}/reviews/stats/daily?days=7`).then((res) => {
+    axios.get(`${API_BASE}/admin/reviews/stats/daily?days=7`, authHeaders).then((res) => {
       const mapped = ((res.data.data || []) as DailyReviewRow[]).map((row) => {
         const d = new Date(row.day)
         const weekday = d.toLocaleDateString('vi-VN', { weekday: 'short' })
@@ -66,7 +67,7 @@ export default function Dashboard() {
       setNewReviewsToday(Number(today?.reviews || 0))
     })
 
-    axios.get(`${API_BASE}/analytics/visits/daily?days=7`, { headers: { Authorization: `Bearer ${adminToken}` } }).then((res) => {
+    axios.get(`${API_BASE}/analytics/visits/daily?days=7`, authHeaders).then((res) => {
       const mapped = ((res.data.data || []) as DailyVisitRow[]).map((row) => {
         const d = new Date(row.day)
         const weekday = d.toLocaleDateString('vi-VN', { weekday: 'short' })
@@ -75,7 +76,7 @@ export default function Dashboard() {
       setDailyVisits(mapped)
     })
 
-    axios.get(`${API_BASE}/analytics/visits/monthly?months=6`, { headers: { Authorization: `Bearer ${adminToken}` } }).then((res) => {
+    axios.get(`${API_BASE}/analytics/visits/monthly?months=6`, authHeaders).then((res) => {
       const mapped = ((res.data.data || []) as MonthlyVisitRow[]).map((row) => {
         const month = String(row.month || "")
         return { name: month, visits: Number(row.visits || 0) }
@@ -83,7 +84,7 @@ export default function Dashboard() {
       setMonthlyVisits(mapped)
     })
 
-    axios.get(`${API_BASE}/companies/top?limit=${topLimit}&order=desc`).then((res) => {
+    axios.get(`${API_BASE}/admin/companies/top?limit=${topLimit}&order=desc`, authHeaders).then((res) => {
       const rows = (res.data?.data || []) as CompanyRow[]
       setTopRated(rows.map((c) => ({
         name: c.name.length > 24 ? `${c.name.slice(0, 24)}...` : c.name,
@@ -92,7 +93,7 @@ export default function Dashboard() {
       })))
     })
 
-    axios.get(`${API_BASE}/companies/top?limit=${topLimit}&order=asc`).then((res) => {
+    axios.get(`${API_BASE}/admin/companies/top?limit=${topLimit}&order=asc`, authHeaders).then((res) => {
       const rows = (res.data?.data || []) as CompanyRow[]
       setLowRated(rows.map((c) => ({
         name: c.name.length > 24 ? `${c.name.slice(0, 24)}...` : c.name,
@@ -103,7 +104,7 @@ export default function Dashboard() {
 
     if (adminToken) {
       axios
-        .get(`${API_BASE}/admin/users`, { headers: { Authorization: `Bearer ${adminToken}` } })
+        .get(`${API_BASE}/admin/users`, authHeaders)
         .then((res) => {
           setAdminCount(Number(res.data?.total || 0))
         })

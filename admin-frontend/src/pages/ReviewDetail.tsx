@@ -59,8 +59,16 @@ export default function ReviewDetail() {
 
   const reload = () => {
     if (!id) return
-    axios.get(`${API_BASE}/reviews/${id}`).then((res) => setReview(res.data))
-    axios.get(`${API_BASE}/reviews/${id}/comments?limit=200`).then((res) => setComments(res.data.data || []))
+    axios
+      .get(`${API_BASE}/admin/reviews/${id}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      .then((res) => setReview(res.data))
+    axios
+      .get(`${API_BASE}/admin/reviews/${id}/comments?limit=200`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      .then((res) => setComments(res.data.data || []))
   }
 
   useEffect(() => {
@@ -214,8 +222,8 @@ export default function ReviewDetail() {
       </div>
 
       {confirmDeleteCommentId && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa bình luận</h3>
             <p className="text-sm text-slate-600">Bạn có chắc muốn xóa bình luận này?</p>
             <div className="flex justify-end gap-3 pt-2">
@@ -235,8 +243,8 @@ export default function ReviewDetail() {
       )}
 
       {confirmDeleteReview && (
-        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-md bg-white rounded-2xl border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa review</h3>
             <p className="text-sm text-slate-600">Bạn có chắc muốn xóa review này?</p>
             <div className="flex justify-end gap-3 pt-2">
