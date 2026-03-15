@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Port           string
+	CorsOrigins    string
 	DBHost         string
 	DBUser         string
 	DBPassword     string
@@ -32,6 +33,7 @@ func LoadConfig() *Config {
 
 	return &Config{
 		Port:           getEnv("PORT", "3000"),
+		CorsOrigins:    getEnv("CORS_ORIGINS", "*"),
 		DBHost:         getEnv("DB_HOST", "localhost"),
 		DBUser:         getEnv("DB_USER", "postgres"),
 		DBPassword:     getEnv("DB_PASSWORD", "secret"),

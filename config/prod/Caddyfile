@@ -1,0 +1,11 @@
+{$APP_DOMAIN} {
+  reverse_proxy frontend:5173
+}
+
+{$ADMIN_DOMAIN} {
+  reverse_proxy admin-frontend:5174
+}
+
+{$API_DOMAIN} {
+  reverse_proxy backend:3000
+}

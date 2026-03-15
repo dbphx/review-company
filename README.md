@@ -61,6 +61,30 @@ Monorepo cho nền tảng review công ty gồm portal người dùng, admin por
 5. Frontend admin:
    - `cd admin-frontend && npm install && npm run dev`
 
+## Deploy prod theo domain (app/admin/api)
+
+Bạn có thể chạy theo mô hình:
+- `https://app.b.c` -> user portal
+- `https://admin.b.c` -> admin portal
+- `https://api.b.c` -> backend API
+
+Đã có sẵn bộ config mẫu:
+- `config/prod/deploy.env.example`
+- `config/prod/backend.env.example`
+- `config/prod/frontend.app.env.example`
+- `config/prod/frontend.admin.env.example`
+- `config/prod/Caddyfile`
+- `docker-compose.prod.yml`
+- `start.prod.sh`
+
+Quick start:
+1. `cp config/prod/*.example` thành các file `.env` tương ứng (script sẽ auto tạo nếu thiếu)
+2. chỉnh domain + secret + DB password trong file env
+3. chạy `./start.prod.sh`
+
+Lưu ý CORS backend production:
+- đặt `CORS_ORIGINS=https://app.b.c,https://admin.b.c` trong `config/prod/backend.env`
+
 ## Tài liệu chi tiết
 - `frontend/REQUIREMENTS.md`
 - `admin-frontend/REQUIREMENTS.md`
