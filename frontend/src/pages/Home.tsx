@@ -104,9 +104,11 @@ export default function Home() {
   return (
     <div className="space-y-12">
       {/* Hero Search Section */}
-      <section className="bg-blue-600 text-white rounded-2xl p-12 text-center shadow-lg relative">
+      <section className="bg-gradient-to-br from-sky-600 via-blue-600 to-teal-600 text-white rounded-2xl p-12 text-center shadow-lg relative overflow-hidden">
+        <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-cyan-300/20 blur-3xl" />
         <h1 className="text-4xl font-extrabold mb-4">Tìm kiếm công ty để Review</h1>
-        <p className="text-blue-100 mb-8 max-w-2xl mx-auto">Hàng ngàn review ẩn danh về môi trường làm việc, văn hóa, và mức lương.</p>
+        <p className="text-sky-100 mb-8 max-w-2xl mx-auto">Hàng ngàn review ẩn danh về môi trường làm việc, văn hóa, và mức lương.</p>
         
         <div className="max-w-2xl mx-auto relative">
           <div className="relative">
