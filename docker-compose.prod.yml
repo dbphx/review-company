@@ -71,18 +71,15 @@ services:
       - backend
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2
-    container_name: review_caddy
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: review_nginx
     ports:
       - "80:80"
-      - "443:443"
     env_file:
       - ./config/prod/deploy.env
     volumes:
-      - ./config/prod/Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./config/prod/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       - frontend
       - admin-frontend
@@ -95,5 +92,3 @@ volumes:
   go_pkg_cache:
   frontend_node_modules:
   admin_frontend_node_modules:
-  caddy_data:
-  caddy_config:

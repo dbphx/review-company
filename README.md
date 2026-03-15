@@ -73,7 +73,7 @@ Bạn có thể chạy theo mô hình:
 - `config/prod/backend.env.example`
 - `config/prod/frontend.app.env.example`
 - `config/prod/frontend.admin.env.example`
-- `config/prod/Caddyfile`
+- `config/prod/nginx/default.conf.template`
 - `docker-compose.prod.yml`
 - `start.prod.sh`
 
@@ -82,8 +82,15 @@ Quick start:
 2. chỉnh domain + secret + DB password trong file env
 3. chạy `./start.prod.sh`
 
+Bạn có thể set domain trực tiếp khi chạy script (script sẽ tự ghi vào env):
+- `APP_DOMAIN=app.real.com ADMIN_DOMAIN=admin.real.com API_DOMAIN=api.real.com ./start.prod.sh`
+
 Lưu ý CORS backend production:
 - đặt `CORS_ORIGINS=https://app.b.c,https://admin.b.c` trong `config/prod/backend.env`
+
+Lưu ý host check của Vite (tránh 403 từ reverse proxy):
+- `config/prod/frontend.app.env` đặt `VITE_ALLOWED_HOSTS=<app-domain>`
+- `config/prod/frontend.admin.env` đặt `VITE_ALLOWED_HOSTS=<admin-domain>`
 
 ## Tài liệu chi tiết
 - `frontend/REQUIREMENTS.md`

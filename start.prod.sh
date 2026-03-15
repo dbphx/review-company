@@ -16,6 +16,17 @@ require_file() {
   fi
 }
 
+upsert_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf "%s=%s\n" "$key" "$value" >> "$file"
+  fi
+}
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Missing docker"
   exit 1
@@ -56,6 +67,21 @@ require_file "$DEPLOY_ENV"
 require_file "$BACKEND_ENV"
 require_file "$FRONTEND_ENV"
 require_file "$ADMIN_ENV"
+
+if [ -n "${APP_DOMAIN:-}" ] && [ -n "${ADMIN_DOMAIN:-}" ] && [ -n "${API_DOMAIN:-}" ]; then
+  echo "Applying domains into prod env files"
+  upsert_env_var "$DEPLOY_ENV" "APP_DOMAIN" "$APP_DOMAIN"
+  upsert_env_var "$DEPLOY_ENV" "ADMIN_DOMAIN" "$ADMIN_DOMAIN"
+  upsert_env_var "$DEPLOY_ENV" "API_DOMAIN" "$API_DOMAIN"
+
+  upsert_env_var "$BACKEND_ENV" "CORS_ORIGINS" "https://${APP_DOMAIN},https://${ADMIN_DOMAIN}"
+
+  upsert_env_var "$FRONTEND_ENV" "VITE_API_URL" "https://${API_DOMAIN}/api"
+  upsert_env_var "$FRONTEND_ENV" "VITE_ALLOWED_HOSTS" "$APP_DOMAIN"
+
+  upsert_env_var "$ADMIN_ENV" "VITE_API_URL" "https://${API_DOMAIN}/api"
+  upsert_env_var "$ADMIN_ENV" "VITE_ALLOWED_HOSTS" "$ADMIN_DOMAIN"
+fi
 
 $COMPOSE_CMD -f "$PROD_COMPOSE_FILE" --env-file "$DEPLOY_ENV" up -d --build
 
