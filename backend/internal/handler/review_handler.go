@@ -10,7 +10,8 @@ import (
 )
 
 type voteRequest struct {
-	Vote string `json:"vote"`
+	Vote     string `json:"vote"`
+	VoteType string `json:"vote_type"`
 }
 
 type ReviewHandler struct {
@@ -214,6 +215,9 @@ func (h *ReviewHandler) VoteReview(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "dữ liệu gửi lên không hợp lệ"})
 	}
+	if req.Vote == "" {
+		req.Vote = req.VoteType
+	}
 
 	voteType, ok := model.ParseVoteType(req.Vote)
 	if !ok {
@@ -256,6 +260,9 @@ func (h *ReviewHandler) VoteComment(c *fiber.Ctx) error {
 	var req voteRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "dữ liệu gửi lên không hợp lệ"})
+	}
+	if req.Vote == "" {
+		req.Vote = req.VoteType
 	}
 
 	voteType, ok := model.ParseVoteType(req.Vote)
